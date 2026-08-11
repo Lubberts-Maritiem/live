@@ -12,6 +12,12 @@ export const REFERENCE_POINTS = {
   kornwerderzand: 'kornwerderzand.waddenzee.buitenhaven',
   vlieland: 'vlieland.haven',
   texel: 'texel.oudeschild',
+  denoever: 'denoever.waddenzee.voorhaven',
+  denhelder: 'denhelder.marsdiep',
+  terschelling: 'terschelling.west',
+  ameland: 'ameland.nes',
+  schiermonnikoog: 'schiermonnikoog.waddenzee',
+  lauwersoog: 'lauwersoog.waddenzee',
 }
 
 function pad(n) {
