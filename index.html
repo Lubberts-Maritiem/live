@@ -714,8 +714,12 @@
     return ROUTES.filter((r) => r.van === from && r.naar === to)
   }
 
+  function destinationsFrom(from) {
+    return Array.from(new Set(ROUTES.filter((r) => r.van === from).map((r) => r.naar))).sort()
+  }
+
   function otherDestinationsFrom(from) {
-    return Array.from(new Set(ROUTES.filter((r) => r.van === from).map((r) => r.naar)))
+    return destinationsFrom(from)
   }
 
   const fromSelect = document.getElementById('from')
@@ -723,14 +727,32 @@
   const swapBtn = document.getElementById('swap')
   const resultEl = document.getElementById('result')
 
-  function fillSelect(select, selected) {
-    select.innerHTML = PLACES.map(
+  function fillSelect(select, options, selected) {
+    select.innerHTML = options.map(
       (p) => `<option value="${p}" ${p === selected ? 'selected' : ''}>${p}</option>`
     ).join('')
   }
 
-  fillSelect(fromSelect, 'Harlingen')
-  fillSelect(toSelect, 'Terschelling')
+  // "Naar" toont alleen plaatsen waar vanaf de gekozen "van"-locatie ook
+  // daadwerkelijk een route bestaat. Voorkomt dat iemand een doodlopende
+  // combinatie kiest (bijv. Terschelling -> IJmuiden, die niet bestaat).
+  function refreshToOptions(preferredTo) {
+    const from = fromSelect.value
+    const options = destinationsFrom(from)
+
+    if (options.length === 0) {
+      toSelect.innerHTML = `<option value="">— geen bestemmingen vanaf ${from} —</option>`
+      toSelect.disabled = true
+      return
+    }
+
+    toSelect.disabled = false
+    const selected = options.includes(preferredTo) ? preferredTo : options[0]
+    fillSelect(toSelect, options, selected)
+  }
+
+  fillSelect(fromSelect, PLACES, 'Harlingen')
+  refreshToOptions('Terschelling')
 
   const vaarinfoBody = document.getElementById('vaarinfo-body')
   vaarinfoBody.innerHTML = VAARINFO.map(
@@ -740,6 +762,11 @@
   async function renderResult() {
     const from = fromSelect.value
     const to = toSelect.value
+
+    if (!to) {
+      resultEl.innerHTML = `<div class="result__no-route">Vanaf <strong>${from}</strong> is geen vaarroute in het systeem bekend.</div>`
+      return
+    }
 
     if (from === to) {
       resultEl.innerHTML = `<div class="result__no-route">Vertrek- en aankomstpunt zijn gelijk. Kies twee verschillende plaatsen.</div>`
@@ -829,12 +856,16 @@
     }
   }
 
-  fromSelect.addEventListener('change', renderResult)
+  fromSelect.addEventListener('change', () => {
+    refreshToOptions(toSelect.value)
+    renderResult()
+  })
   toSelect.addEventListener('change', renderResult)
   swapBtn.addEventListener('click', () => {
-    const a = fromSelect.value
-    fromSelect.value = toSelect.value
-    toSelect.value = a
+    const newFrom = toSelect.value
+    const newTo = fromSelect.value
+    fromSelect.value = newFrom
+    refreshToOptions(newTo)
     renderResult()
   })
 
