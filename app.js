@@ -273,18 +273,18 @@ function referentiepuntVoorPlaats(plaats) {
   return route ? route.referentiepunt : null
 }
 
+// Geeft de onderliggende fetch-promise terug (i.p.v. "fire and forget") zodat
+// boot() hierop kan wachten bij de allereerste keer laden.
 function refreshMeteo() {
   const from = fromSelect.value
   const punt = referentiepuntVoorPlaats(from)
   if (!punt) {
     meteoHeading.textContent = `Actueel weer & zon`
     meteoBody.innerHTML = `<p class="meteo__status">Geen weerpunt bekend voor ${from}.</p>`
-    return
+    return Promise.resolve()
   }
-  loadMeteoVoorVertrekpunt(punt, from)
+  return loadMeteoVoorVertrekpunt(punt, from)
 }
-
-refreshMeteo()
 
 // ---------------------------------------------------------------------------
 // Resultaatweergave
@@ -331,7 +331,10 @@ async function renderResult() {
   const cards = resultEl.querySelectorAll('.result__card')
 
   const gekozenDatum = dateToggle.checked ? dateInput.value : null
-  matches.forEach((route, i) => loadRoute(route, cards[i], gekozenDatum))
+  // Promise.all i.p.v. "fire and forget": elke kaart update nog steeds zodra
+  // ZIJN fetch klaar is, maar renderResult() zelf resolvet pas als alles
+  // klaar is — dat signaal gebruikt boot() om de opstartanimatie te sluiten.
+  await Promise.all(matches.map((route, i) => loadRoute(route, cards[i], gekozenDatum)))
 }
 
 function isZelfdeDag(date, isoDatum) {
@@ -511,4 +514,33 @@ swapBtn.addEventListener('click', () => {
   swapBtn.addEventListener('animationend', () => swapBtn.classList.remove('is-spinning'), { once: true })
 })
 
-renderResult()
+// ---------------------------------------------------------------------------
+// Boot-overlay — verbergt de pagina achter een korte merkanimatie tot de
+// eerste getij- én weergegevens binnen zijn, met een maximale wachttijd zodat
+// een trage of falende fetch de gebruiker nooit blijvend blokkeert.
+// ---------------------------------------------------------------------------
+
+const BOOT_MAX_WACHTTIJD_MS = 4000
+const BOOT_STATUSTEKSTEN = ['Getij ophalen…', 'Wind controleren…', 'Vertrekvenster berekenen…']
+
+async function boot() {
+  const overlay = document.getElementById('boot-overlay')
+  const statusEl = document.getElementById('boot-status')
+
+  let statusIdx = 0
+  const statusIv = statusEl
+    ? setInterval(() => {
+        statusIdx = (statusIdx + 1) % BOOT_STATUSTEKSTEN.length
+        statusEl.textContent = BOOT_STATUSTEKSTEN[statusIdx]
+      }, 700)
+    : null
+
+  const klaar = Promise.all([refreshMeteo(), renderResult()])
+  const timeout = new Promise((resolve) => setTimeout(resolve, BOOT_MAX_WACHTTIJD_MS))
+  await Promise.race([klaar, timeout])
+
+  if (statusIv) clearInterval(statusIv)
+  if (overlay) overlay.classList.add('hidden')
+}
+
+boot()

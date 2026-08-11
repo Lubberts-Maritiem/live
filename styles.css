@@ -44,6 +44,65 @@ body {
 
 .page { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
 
+/* Boot-overlay — korte merkanimatie terwijl de eerste getij- en windgegevens
+   worden opgehaald. Verdwijnt zodra beide klaar zijn (of na een vaste
+   maximale wachttijd, zie app.js), zodat een trage/falende fetch de
+   gebruiker nooit blijvend blokkeert. */
+.boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(61, 107, 111, 0.35), transparent),
+    var(--ink-deep);
+  transition: opacity 0.5s var(--ease);
+}
+.boot-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.boot-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+}
+.boot-mark {
+  color: var(--brass-bright);
+  filter: drop-shadow(0 0 18px rgba(217, 168, 92, 0.4));
+}
+.boot-mark svg { animation: boot-bob 2.6s ease-in-out infinite; }
+.boot-wave { animation: boot-wave-flow 1.1s linear infinite; }
+.boot-brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--paper);
+}
+.boot-status {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(238, 242, 239, 0.45);
+  min-height: 1em;
+}
+
+@keyframes boot-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes boot-wave-flow {
+  to { stroke-dashoffset: -8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-mark svg, .boot-wave { animation: none; }
+}
+
 .skip-link {
   position: absolute;
   left: -999px;

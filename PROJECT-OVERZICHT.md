@@ -533,9 +533,47 @@ unieke ids, geldige referentiepunten en aanwezige coördinaten (zie sectie
   gehouden, zou een aparte beslissing vergen (nieuw referentiepunt, en een
   andere aanpak dan vaste-offset-vuistregels omdat daar geen bron voor is).
 
+## 10. Boot-overlay (vervolgsessie, zelfde dag)
+
+De gebruiker had op een ander project (`lubberts-maritiem.github.io/marifoon`,
+een VHF-marifoon-scanner-site) een opstartanimatie: een fullscreen overlay
+met merknaam, een groot kanaalnummer dat oploopt (01 → 16) en een subtekst,
+die na een vaste tijd (~2,2s) wegfadet en dan de echte features start
+(audio/camera's/datafeeds). Bron bekeken via de GitHub-repo
+(`raw.githubusercontent.com/Lubberts-Maritiem/marifoon/main/index.html`) en
+het door de gebruiker geüploade `lubberts-maritiem.html` (een eerdere versie
+van dezelfde site, bevestigt hetzelfde patroon).
+
+**Toegepast op wadoversteken.nl**, maar thematisch aangepast i.p.v. letterlijk
+gekopieerd:
+- Nieuwe `.boot-overlay` in `index.html` (direct na `<body>`): het bestaande
+  golf/mast-beeldmerk (hergebruikt uit de header), de merknaam
+  "wadoversteken.nl", en een statusregel die wisselt tussen "Getij
+  ophalen…", "Wind controleren…" en "Vertrekvenster berekenen…".
+- CSS in `styles.css`: de golven in het icoon krijgen `stroke-dasharray` +
+  een `stroke-dashoffset`-animatie (`boot-wave-flow`) zodat het lijkt of het
+  water "stroomt"; het hele icoon bobt licht op en neer (`boot-bob`).
+  `prefers-reduced-motion` schakelt beide animaties uit.
+- **Belangrijk verschil met het marifoon-voorbeeld**: daar is de wachttijd
+  een vaste timer, losgekoppeld van of de echte data al binnen is. Hier is
+  de overlay **gekoppeld aan echte gereedheid**: `refreshMeteo()` en
+  `renderResult()` zijn aangepast zodat ze hun fetch-promise teruggeven
+  i.p.v. "fire and forget" te zijn, en een nieuwe `boot()`-functie in
+  `app.js` wacht via `Promise.race()` op zowel die twee samen (`Promise.all`)
+  als een vaste vangnet-timeout van `BOOT_MAX_WACHTTIJD_MS` (4000 ms) — wat
+  eerder is. Zo verdwijnt de overlay zo snel als de data het toelaat, maar
+  hangt de gebruiker nooit vast als een fetch traag is of faalt.
+- Geverifieerd: syntax-check op `app.js`, geen dubbele `refreshMeteo()`/
+  `renderResult()`/`boot()`-aanroepen meer, alle `id`-referenties kloppen,
+  `styles.css` heeft evenveel openende als sluitende accolades, en de
+  site + `/api/getij` reageren nog gewoon via `devserver.mjs`. Er was ook nu
+  geen headless browser beschikbaar (en de Chrome-extensie was niet
+  verbonden) om de animatie daadwerkelijk te zien bewegen — visuele controle
+  door de gebruiker zelf (of een volgende sessie) is aan te raden.
+
 ---
 
 *Dit document is gegenereerd als hand-off tussen werksessies. De huidige
-bestanden dekken alle features t/m punt 12 in sectie 5 (code-splitsing,
-a11y- en visuele polish, 67 routes), maar nog geen route-kaart (sectie 6,
-"Route-kaart" is de eerstvolgende openstaande taak).*
+bestanden dekken alle features t/m punt 12 in sectie 5 plus de boot-overlay
+uit sectie 10, maar nog geen route-kaart (sectie 6, "Route-kaart" is de
+eerstvolgende openstaande taak).*
