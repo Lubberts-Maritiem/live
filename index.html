@@ -170,10 +170,73 @@
   .footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
   .footer p { font-size: 0.8rem; line-height: 1.6; color: rgba(238, 242, 239, 0.45); max-width: 68ch; }
 
+  .result__opmerking {
+    margin: -0.9rem 0 1.1rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: rgba(238, 242, 239, 0.4);
+    font-style: italic;
+  }
+  .result__next-time--window { font-size: 1.5rem; }
+  .result__next-tot {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: rgba(238, 242, 239, 0.4);
+    font-weight: 400;
+    font-style: italic;
+    margin: 0 0.2rem;
+  }
+
+  /* Vaarinfo-blok (diepgang/vaartijd) */
+  .vaarinfo {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .vaarinfo h2 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0 0 1rem;
+    color: rgba(238, 242, 239, 0.85);
+  }
+  .vaarinfo table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .vaarinfo th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(238, 242, 239, 0.4);
+    font-weight: 500;
+    padding: 0 0.6rem 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .vaarinfo td {
+    padding: 0.55rem 0.6rem 0.55rem 0;
+    border-bottom: 1px solid var(--line);
+    color: rgba(238, 242, 239, 0.75);
+  }
+  .vaarinfo td.vaarinfo__mono {
+    font-family: var(--font-mono);
+    color: var(--tide-line);
+  }
+  .vaarinfo tr:last-child td { border-bottom: none; }
+
+  .footer__copyright {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: rgba(238, 242, 239, 0.35);
+  }
+
   @media (max-width: 480px) {
     .page { padding: 2rem 1.1rem 3rem; }
     .header { flex-direction: column; }
     .result__next-time { font-size: 1.6rem; }
+    .vaarinfo { font-size: 0.8rem; }
   }
 </style>
 </head>
@@ -215,28 +278,232 @@
 
   <main class="result" id="result"></main>
 
+  <section class="vaarinfo">
+    <h2>Diepgang &amp; gemiddelde vaartijd</h2>
+    <table>
+      <thead>
+        <tr><th>Traject</th><th>Diepgang</th><th>Vaartijd</th></tr>
+      </thead>
+      <tbody id="vaarinfo-body"></tbody>
+    </table>
+  </section>
+
   <footer class="footer">
     <p>
-      Getijgegevens: Rijkswaterstaat (astronomisch getij, Waterinfo/WaterWebservices). Vertrektijden zijn
-      vuistregels, geen garantie op bevaarbaarheid. Controleer altijd actuele omstandigheden, diepgang en
-      weer voor vertrek.
+      Getijgegevens: Rijkswaterstaat (astronomisch getij, Waterinfo/WaterWebservices). Vertrekadviezen:
+      Waddenhavens.nl. Dit zijn vuistregels, geen garantie op bevaarbaarheid. Controleer altijd actuele
+      omstandigheden, diepgang, wind, stroming en betonning voor vertrek.
     </p>
+    <p class="footer__copyright">© Lubberts Maritiem 2026</p>
   </footer>
 </div>
 
 <script>
-  // Zelfde routedefinities als src/routes.js in het React-project.
-  // Houd deze lijst synchroon als je een route toevoegt of wijzigt.
+  // Bron: Waddenhavens.nl (aangeleverd 2026). Vertrekadviezen t.o.v. HW/LW
+  // op een referentiepunt. offsetMinuten is een enkel getal voor een vast
+  // moment, of [start, eind] voor een vensterbreedte (bijv. "1–3 uur na LW").
+  // Negatief = vóór het event, positief = erna.
   const ROUTES = [
+    // ===== TEXEL / OUDESCHILD =====
+    {
+      id: 'denoever-oudeschild',
+      van: 'Den Oever', naar: 'Oudeschild', via: 'Gat van de Stier',
+      referentiepunt: 'denoever', event: 'laagwater', offsetMinuten: -90,
+      advies: '1,5 uur voor laagwater Den Oever',
+    },
+    {
+      id: 'denhelder-oudeschild',
+      van: 'Den Helder', naar: 'Oudeschild', via: 'Texelstroom',
+      referentiepunt: 'denhelder', event: 'laagwater', offsetMinuten: [60, 180],
+      advies: '1–3 uur na laagwater Den Helder',
+    },
+    {
+      id: 'kornwerderzand-oudeschild',
+      van: 'Kornwerderzand', naar: 'Oudeschild', via: 'Texelstroom',
+      referentiepunt: 'kornwerderzand', event: 'hoogwater', offsetMinuten: [0, 120],
+      advies: '0–2 uur na hoogwater Kornwerderzand',
+    },
+    {
+      id: 'harlingen-oudeschild',
+      van: 'Harlingen', naar: 'Oudeschild', via: 'Boontjes',
+      referentiepunt: 'harlingen', event: 'hoogwater', offsetMinuten: 0,
+      advies: 'Rond hoogwater Harlingen',
+    },
+    {
+      id: 'vlieland-oudeschild-inschot',
+      van: 'Vlieland', naar: 'Oudeschild', via: 'Inschot',
+      referentiepunt: 'vlieland', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Vlieland',
+    },
+    {
+      id: 'vlieland-oudeschild-noordzee',
+      van: 'Vlieland', naar: 'Oudeschild', via: 'Noordzee',
+      referentiepunt: 'vlieland', event: 'hoogwater', offsetMinuten: 30,
+      advies: '0,5 uur na hoogwater Vlieland',
+    },
+    {
+      id: 'terschelling-oudeschild-schuitengat-noordzee',
+      van: 'Terschelling', naar: 'Oudeschild', via: 'Schuitengat via Noordzee',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater West-Terschelling',
+    },
+    {
+      id: 'terschelling-oudeschild-slenk-noordzee',
+      van: 'Terschelling', naar: 'Oudeschild', via: 'Slenk via Noordzee',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater West-Terschelling',
+    },
+    {
+      id: 'terschelling-oudeschild-schuitengat',
+      van: 'Terschelling', naar: 'Oudeschild', via: 'Schuitengat',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater West-Terschelling',
+    },
+    {
+      id: 'terschelling-oudeschild-slenk',
+      van: 'Terschelling', naar: 'Oudeschild', via: 'Slenk',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater West-Terschelling',
+    },
+    {
+      id: 'oudeschild-ijmuiden',
+      van: 'Oudeschild', naar: 'IJmuiden', via: 'Schulpengat',
+      referentiepunt: 'texel', event: 'hoogwater', offsetMinuten: -30,
+      advies: '0,5 uur voor hoogwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-scheveningen',
+      van: 'Oudeschild', naar: 'Scheveningen', via: 'Schulpengat',
+      referentiepunt: 'texel', event: 'hoogwater', offsetMinuten: -30,
+      advies: '0,5 uur voor hoogwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-denoever',
+      van: 'Oudeschild', naar: 'Den Oever', via: 'Gat van de Stier',
+      referentiepunt: 'texel', event: 'laagwater', offsetMinuten: -30,
+      advies: '0,5 uur voor laagwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-kornwerderzand',
+      van: 'Oudeschild', naar: 'Kornwerderzand', via: 'Texelstroom',
+      referentiepunt: 'texel', event: 'laagwater', offsetMinuten: [60, 180],
+      advies: '1–3 uur na laagwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-harlingen',
+      van: 'Oudeschild', naar: 'Harlingen', via: 'Texelstroom',
+      referentiepunt: 'texel', event: 'laagwater', offsetMinuten: [60, 120],
+      advies: '1–2 uur na laagwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-vlieland-terschelling-scheurrak',
+      van: 'Oudeschild', naar: 'Vlieland/Terschelling', via: 'Scheurrak',
+      referentiepunt: 'texel', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-vlieland-terschelling-molengat',
+      van: 'Oudeschild', naar: 'Vlieland/Terschelling', via: 'Molengat via Noordzee',
+      referentiepunt: 'texel', event: 'laagwater', offsetMinuten: -60,
+      advies: '1 uur voor laagwater Oudeschild',
+    },
+    {
+      id: 'oudeschild-denhelder',
+      van: 'Oudeschild', naar: 'Den Helder', via: 'Texelstroom',
+      referentiepunt: 'texel', event: 'hoogwater', offsetMinuten: [0, 240],
+      advies: '0–4 uur na hoogwater Oudeschild',
+    },
+
+    // ===== VLIELAND =====
+    {
+      id: 'oudeschild-vlieland-scheurrak',
+      van: 'Oudeschild', naar: 'Vlieland', via: 'Scheurrak',
+      referentiepunt: 'texel', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Texel',
+    },
+    {
+      id: 'oudeschild-vlieland-noordzee',
+      van: 'Oudeschild', naar: 'Vlieland', via: 'Noordzee',
+      referentiepunt: 'texel', event: 'laagwater', offsetMinuten: -60,
+      advies: '1 uur voor laagwater Texel',
+    },
+    {
+      id: 'harlingen-vlieland',
+      van: 'Harlingen', naar: 'Vlieland', via: null,
+      referentiepunt: 'harlingen', event: 'hoogwater', offsetMinuten: 120,
+      advies: '2 uur na hoogwater Harlingen',
+    },
+    {
+      id: 'kornwerderzand-vlieland-inschot',
+      van: 'Kornwerderzand', naar: 'Vlieland', via: 'Inschot',
+      referentiepunt: 'kornwerderzand', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater Kornwerderzand',
+    },
+    {
+      id: 'kornwerderzand-vlieland-boontjes',
+      van: 'Kornwerderzand', naar: 'Vlieland', via: 'Boontjes',
+      referentiepunt: 'kornwerderzand', event: 'hoogwater', offsetMinuten: 0,
+      advies: 'Rond hoogwater Kornwerderzand',
+    },
+    {
+      id: 'terschelling-vlieland-schuitengat',
+      van: 'Terschelling', naar: 'Vlieland', via: 'Schuitengat',
+      referentiepunt: 'terschelling', event: 'laagwater', offsetMinuten: -60,
+      advies: '1 uur voor laagwater Terschelling',
+    },
+    {
+      id: 'terschelling-vlieland-slenk',
+      van: 'Terschelling', naar: 'Vlieland', via: 'Slenk',
+      referentiepunt: 'terschelling', event: 'laagwater', offsetMinuten: -120,
+      advies: '2 uur voor laagwater Terschelling',
+    },
+    {
+      id: 'ameland-vlieland-noordzee',
+      van: 'Ameland', naar: 'Vlieland', via: 'Noordzee',
+      referentiepunt: 'ameland', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'vlieland-harlingen',
+      van: 'Vlieland', naar: 'Harlingen', via: null,
+      referentiepunt: 'vlieland', event: 'laagwater', offsetMinuten: 120,
+      advies: '2 uur na laagwater Vlieland',
+    },
+    {
+      id: 'vlieland-kornwerderzand-boontjes',
+      van: 'Vlieland', naar: 'Kornwerderzand', via: 'Boontjes',
+      referentiepunt: 'vlieland', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater Vlieland',
+    },
+    {
+      id: 'vlieland-kornwerderzand-inschot',
+      van: 'Vlieland', naar: 'Kornwerderzand', via: 'Inschot / Zuidoostrak',
+      referentiepunt: 'vlieland', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Vlieland',
+    },
+    {
+      id: 'vlieland-terschelling',
+      van: 'Vlieland', naar: 'Terschelling', via: 'Slenk / Schuitengat',
+      referentiepunt: 'vlieland', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater Vlieland',
+    },
+    {
+      id: 'vlieland-ameland',
+      van: 'Vlieland', naar: 'Ameland', via: 'Noordzee',
+      referentiepunt: 'vlieland', event: 'laagwater', offsetMinuten: -60,
+      advies: '1 uur voor laagwater Vlieland',
+    },
+
+    // ===== TERSCHELLING =====
     {
       id: 'texel-terschelling-scheurrak',
-      van: 'Texel', naar: 'Terschelling', via: 'Scheurrak / Slenk',
+      van: 'Oudeschild', naar: 'Terschelling', via: 'Scheurrak / Slenk',
       referentiepunt: 'texel', event: 'hoogwater', offsetMinuten: -120,
       advies: '2 uur voor hoogwater Texel',
     },
     {
       id: 'texel-terschelling-noordzee',
-      van: 'Texel', naar: 'Terschelling', via: 'Noordzee',
+      van: 'Oudeschild', naar: 'Terschelling', via: 'Noordzee',
       referentiepunt: 'texel', event: 'laagwater', offsetMinuten: -60,
       advies: '1 uur voor laagwater Texel',
     },
@@ -244,7 +511,7 @@
       id: 'kornwerderzand-terschelling',
       van: 'Kornwerderzand', naar: 'Terschelling', via: 'Boontjes',
       referentiepunt: 'kornwerderzand', event: 'hoogwater', offsetMinuten: 0,
-      advies: 'Bij hoogwater Kornwerderzand',
+      advies: 'Rond hoogwater Kornwerderzand',
     },
     {
       id: 'harlingen-terschelling',
@@ -253,11 +520,145 @@
       advies: '2 uur na hoogwater Harlingen',
     },
     {
-      id: 'vlieland-terschelling',
-      van: 'Vlieland', naar: 'Terschelling', via: 'Slenk of Schuitengat',
-      referentiepunt: 'vlieland', event: 'hoogwater', offsetMinuten: -60,
-      advies: '1 uur voor hoogwater Vlieland',
+      id: 'terschelling-texel-slenk-omdraai',
+      van: 'Terschelling', naar: 'Oudeschild', via: 'Slenk, via Scheurrak / Omdraai',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Terschelling',
     },
+    {
+      id: 'terschelling-texel-slenk-meep',
+      van: 'Terschelling', naar: 'Oudeschild', via: 'Slenk – Meep – Stortemelk',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater Terschelling',
+    },
+    {
+      id: 'terschelling-vlieland',
+      van: 'Terschelling', naar: 'Vlieland', via: null,
+      referentiepunt: 'terschelling', event: 'laagwater', offsetMinuten: -120,
+      advies: '2 uur voor laagwater Terschelling',
+    },
+    {
+      id: 'terschelling-ameland',
+      van: 'Terschelling', naar: 'Ameland', via: null,
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Terschelling',
+    },
+    {
+      id: 'terschelling-ameland-noordzee',
+      van: 'Terschelling', naar: 'Ameland', via: 'Noordzee via Schuitengat',
+      referentiepunt: 'terschelling', event: 'laagwater', offsetMinuten: -240,
+      advies: '4 uur voor laagwater Terschelling',
+    },
+    {
+      id: 'terschelling-harlingen',
+      van: 'Terschelling', naar: 'Harlingen', via: null,
+      referentiepunt: 'terschelling', event: 'laagwater', offsetMinuten: -60,
+      advies: 'Vanaf 1 uur voor laagwater tot uiterlijk 3 uur voor hoogwater Terschelling',
+      opmerking: 'Venster loopt van laagwater tot het daaropvolgende hoogwater; hier getoond vanaf het vroegste vertrekmoment.',
+    },
+    {
+      id: 'terschelling-kornwerderzand-inschot',
+      van: 'Terschelling', naar: 'Kornwerderzand', via: 'Inschot',
+      referentiepunt: 'terschelling', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Terschelling',
+    },
+    {
+      id: 'terschelling-kornwerderzand-harlingen',
+      van: 'Terschelling', naar: 'Kornwerderzand', via: 'via Harlingen / Boontjes',
+      referentiepunt: 'terschelling', event: 'laagwater', offsetMinuten: -60,
+      advies: 'Vanaf 1 uur voor laagwater tot uiterlijk 3 uur voor hoogwater Terschelling',
+      opmerking: 'Venster loopt van laagwater tot het daaropvolgende hoogwater; hier getoond vanaf het vroegste vertrekmoment.',
+    },
+
+    // ===== AMELAND =====
+    {
+      id: 'ameland-schiermonnikoog',
+      van: 'Ameland', naar: 'Schiermonnikoog', via: null,
+      referentiepunt: 'ameland', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'ameland-lauwersoog',
+      van: 'Ameland', naar: 'Lauwersoog', via: null,
+      referentiepunt: 'ameland', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'ameland-terschelling',
+      van: 'Ameland', naar: 'Terschelling', via: null,
+      referentiepunt: 'ameland', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'ameland-harlingen',
+      van: 'Ameland', naar: 'Harlingen', via: 'Kimstergat',
+      referentiepunt: 'ameland', event: 'hoogwater', offsetMinuten: -240,
+      advies: '4 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'ameland-vlieland-terschelling-noordzee',
+      van: 'Ameland', naar: 'Vlieland/Terschelling', via: 'Noordzee',
+      referentiepunt: 'ameland', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'ameland-lauwersoog-noordzee',
+      van: 'Ameland', naar: 'Lauwersoog', via: 'Noordzee',
+      referentiepunt: 'ameland', event: 'laagwater', offsetMinuten: -180,
+      advies: '3 uur voor laagwater Ameland',
+    },
+    {
+      id: 'schiermonnikoog-ameland',
+      van: 'Schiermonnikoog', naar: 'Ameland', via: null,
+      referentiepunt: 'schiermonnikoog', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Schiermonnikoog',
+    },
+    {
+      id: 'lauwersoog-ameland',
+      van: 'Lauwersoog', naar: 'Ameland', via: null,
+      referentiepunt: 'lauwersoog', event: 'hoogwater', offsetMinuten: -180,
+      advies: '3 uur voor hoogwater Ameland',
+    },
+    {
+      id: 'harlingen-ameland',
+      van: 'Harlingen', naar: 'Ameland', via: 'Kimstergat',
+      referentiepunt: 'harlingen', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Harlingen',
+    },
+    {
+      id: 'lauwersoog-ameland-noordzee',
+      van: 'Lauwersoog', naar: 'Ameland', via: 'Noordzee',
+      referentiepunt: 'lauwersoog', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater Lauwersoog',
+    },
+
+    // ===== SCHIERMONNIKOOG =====
+    {
+      id: 'ameland-schiermonnikoog-noordzee',
+      van: 'Ameland', naar: 'Schiermonnikoog', via: 'Noordzee',
+      referentiepunt: 'schiermonnikoog', event: 'hoogwater', offsetMinuten: 60,
+      advies: '1 uur na hoogwater Schiermonnikoog',
+    },
+    {
+      id: 'lauwersoog-schiermonnikoog',
+      van: 'Lauwersoog', naar: 'Schiermonnikoog', via: null,
+      referentiepunt: 'lauwersoog', event: 'hoogwater', offsetMinuten: -120,
+      advies: '2 uur voor hoogwater Lauwersoog',
+    },
+    {
+      id: 'schiermonnikoog-lauwersoog',
+      van: 'Schiermonnikoog', naar: 'Lauwersoog', via: null,
+      referentiepunt: 'schiermonnikoog', event: 'hoogwater', offsetMinuten: -60,
+      advies: '1 uur voor hoogwater Schiermonnikoog',
+    },
+  ]
+
+  // Extra info (geen vertrektijd): diepgang en gemiddelde vaartijd per traject.
+  const VAARINFO = [
+    { traject: 'Ameland ↔ Schiermonnikoog', diepgang: 'ca. 1,30 m', vaartijd: 'ca. 3–4 uur' },
+    { traject: 'Ameland ↔ Lauwersoog', diepgang: 'ca. 1,40 m', vaartijd: 'ca. 3–4 uur' },
+    { traject: 'Ameland ↔ Terschelling', diepgang: 'ca. 1,60 m', vaartijd: 'ca. 5–6 uur' },
+    { traject: 'Ameland → Harlingen via Kimstergat', diepgang: 'ca. 1,00 m', vaartijd: '—' },
   ]
 
   const REFERENCE_LABELS = {
@@ -265,6 +666,12 @@
     kornwerderzand: 'Kornwerderzand',
     harlingen: 'Harlingen, Waddenzee',
     vlieland: 'Vlieland, haven',
+    denoever: 'Den Oever, Waddenzee',
+    denhelder: 'Den Helder, Marsdiep',
+    terschelling: 'West-Terschelling',
+    ameland: 'Ameland, Nes',
+    schiermonnikoog: 'Schiermonnikoog, Waddenzee',
+    lauwersoog: 'Lauwersoog, Waddenzee',
   }
 
   // Plaatsen voor de dropdowns: alle unieke "van" en "naar" waarden uit ROUTES.
@@ -280,12 +687,26 @@
   }
 
   function computeDepartures(extremen, route) {
+    const isWindow = Array.isArray(route.offsetMinuten)
+
     return extremen
       .filter((e) => e.type === route.event)
       .map((e) => {
         const eventTime = new Date(e.tijdstip)
+        if (isWindow) {
+          const [startOffset, eindOffset] = route.offsetMinuten
+          const vertrekStart = new Date(eventTime.getTime() + startOffset * 60000)
+          const vertrekEind = new Date(eventTime.getTime() + eindOffset * 60000)
+          return {
+            vertrek: vertrekStart < vertrekEind ? vertrekStart : vertrekEind,
+            vertrekEind: vertrekStart < vertrekEind ? vertrekEind : vertrekStart,
+            eventTime,
+            eventType: e.type,
+            isWindow: true,
+          }
+        }
         const vertrek = new Date(eventTime.getTime() + route.offsetMinuten * 60000)
-        return { vertrek, eventTime, eventType: e.type }
+        return { vertrek, eventTime, eventType: e.type, isWindow: false }
       })
   }
 
@@ -310,6 +731,11 @@
 
   fillSelect(fromSelect, 'Harlingen')
   fillSelect(toSelect, 'Terschelling')
+
+  const vaarinfoBody = document.getElementById('vaarinfo-body')
+  vaarinfoBody.innerHTML = VAARINFO.map(
+    (v) => `<tr><td>${v.traject}</td><td class="vaarinfo__mono">${v.diepgang}</td><td class="vaarinfo__mono">${v.vaartijd}</td></tr>`
+  ).join('')
 
   async function renderResult() {
     const from = fromSelect.value
@@ -343,6 +769,9 @@
     const fmt = (d) => d.toISOString().slice(0, 10)
 
     const viaHtml = route.via ? `<p class="result__via">via ${route.via}</p>` : ''
+    const opmerkingHtml = route.opmerking
+      ? `<p class="result__opmerking">${route.opmerking}</p>`
+      : ''
     const header = `
       <div class="result__route">
         <span>${route.van}</span>
@@ -351,6 +780,7 @@
       </div>
       ${viaHtml}
       <p class="result__advies">${route.advies}</p>
+      ${opmerkingHtml}
     `
 
     try {
@@ -364,7 +794,9 @@
 
       const departures = computeDepartures(data.extremen ?? [], route)
       const now = new Date()
-      const upcoming = departures.filter((d) => d.vertrek >= now).sort((a, b) => a.vertrek - b.vertrek)
+      const upcoming = departures
+        .filter((d) => (d.isWindow ? d.vertrekEind >= now : d.vertrek >= now))
+        .sort((a, b) => a.vertrek - b.vertrek)
       const next = upcoming[0]
 
       if (!next) {
@@ -372,13 +804,20 @@
         return
       }
 
-      const listItems = upcoming.slice(1, 4).map((d) => `<li>${formatDateTime(d.vertrek)}</li>`).join('')
+      const timeHtml = next.isWindow
+        ? `<span class="result__next-time result__next-time--window">${formatDateTime(next.vertrek)} <span class="result__next-tot">tot</span> ${formatTime(next.vertrekEind)}</span>`
+        : `<span class="result__next-time">${formatDateTime(next.vertrek)}</span>`
+
+      const listItems = upcoming.slice(1, 4).map((d) => {
+        const label = d.isWindow ? `${formatDateTime(d.vertrek)} tot ${formatTime(d.vertrekEind)}` : formatDateTime(d.vertrek)
+        return `<li>${label}</li>`
+      }).join('')
 
       card.innerHTML = `
         ${header}
         <div class="result__next">
-          <span class="result__next-label">Eerstvolgende vertrek</span>
-          <span class="result__next-time">${formatDateTime(next.vertrek)}</span>
+          <span class="result__next-label">${next.isWindow ? 'Eerstvolgend vertrekvenster' : 'Eerstvolgende vertrek'}</span>
+          ${timeHtml}
           <span class="result__next-ref">
             ${next.eventType === 'hoogwater' ? 'HW' : 'LW'} ${REFERENCE_LABELS[route.referentiepunt]} om ${formatTime(next.eventTime)}
           </span>
