@@ -1,0 +1,419 @@
+/* wadoversteken.nl — stijl
+   Was voorheen inline in index.html; losgetrokken voor overzicht en caching.
+   Thema: donkere "zeekaart"-look, brass/koper accenten, sans voor UI, serif
+   voor titels, mono voor tijden/cijfers. */
+
+:root {
+  --ink: #0c1f2e;
+  --ink-deep: #071620;
+  --paper: #eef2ef;
+  --brass: #b8863b;
+  --brass-bright: #d9a85c;
+  --tide-line: #3d6b6f;
+  --error: #c1543a;
+  --success: #4f9d7a;
+  --line: rgba(238, 242, 239, 0.14);
+  --field-bg: rgba(238, 242, 239, 0.06);
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --radius: 6px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(61, 107, 111, 0.35), transparent),
+    var(--ink-deep);
+  color: var(--paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Duidelijke, thema-passende focus-ring i.p.v. de standaard browserstijl of
+   'outline: none' zonder alternatief (dat laatste is een a11y-probleem). */
+:focus-visible {
+  outline: 2px solid var(--brass-bright);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.page { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: auto;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--brass);
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+.header {
+  display: flex; align-items: flex-start; gap: 1.1rem;
+  margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--line);
+}
+.header__mark { color: var(--brass-bright); flex-shrink: 0; margin-top: 0.3rem; }
+.header h1 {
+  font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 0.4rem; letter-spacing: -0.01em;
+}
+.header__sub {
+  margin: 0; color: rgba(238, 242, 239, 0.65); font-size: 1rem; max-width: 42ch; line-height: 1.5;
+}
+
+/* Route picker — Google Maps-achtig A/B-veld met wissel-knop */
+.picker {
+  background: linear-gradient(165deg, rgba(238, 242, 239, 0.05), rgba(238, 242, 239, 0.02));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem;
+  position: relative;
+  margin-bottom: 1.75rem;
+  transition: border-color 0.2s var(--ease);
+}
+.picker:focus-within { border-color: var(--brass); }
+.picker__field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+}
+.picker__field + .picker__field {
+  border-top: 1px solid var(--line);
+}
+.picker__dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--brass-bright);
+}
+.picker__field--to .picker__dot {
+  border-radius: 2px;
+  background: var(--tide-line);
+}
+.picker__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(238, 242, 239, 0.4);
+  flex-shrink: 0;
+  width: 3.4rem;
+}
+.picker__select {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  padding: 0.2rem 0;
+  appearance: none;
+  cursor: pointer;
+}
+.picker__select option { background: var(--ink); color: var(--paper); }
+
+.picker__swap {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--ink);
+  color: var(--brass-bright);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.picker__swap:hover { border-color: var(--brass); }
+.picker__swap:active { transform: translateY(-50%) scale(0.92); }
+.picker__swap.is-spinning svg { animation: swap-spin 0.35s var(--ease); }
+.picker__swap svg { width: 16px; height: 16px; }
+
+@keyframes swap-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(180deg); }
+}
+
+/* Datumkiezer */
+.datepicker {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  padding: 0 0.4rem;
+  flex-wrap: wrap;
+}
+.datepicker__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: rgba(238, 242, 239, 0.65);
+  cursor: pointer;
+  user-select: none;
+}
+.datepicker__toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--brass);
+  cursor: pointer;
+}
+.datepicker__input {
+  background: var(--field-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  padding: 0.4rem 0.6rem;
+  color-scheme: dark;
+  transition: border-color 0.15s var(--ease);
+}
+.datepicker__input:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.datepicker__input:not(:disabled) {
+  cursor: pointer;
+  border-color: var(--brass);
+}
+
+/* Resultaat */
+.result { min-height: 4rem; }
+.result__empty {
+  color: rgba(238, 242, 239, 0.45);
+  font-size: 0.95rem;
+  padding: 1.5rem 0.2rem;
+}
+.result__card {
+  background: linear-gradient(165deg, rgba(238, 242, 239, 0.05), rgba(238, 242, 239, 0.02));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.75rem 1.75rem 1.9rem;
+  position: relative;
+  overflow: hidden;
+  animation: card-in 0.3s var(--ease);
+}
+.result__card + .result__card { margin-top: 1rem; }
+.result__card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--brass), transparent 70%);
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result__card, .picker__swap.is-spinning svg { animation: none; }
+}
+
+.result__route {
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 500;
+  display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; line-height: 1.25;
+  margin-bottom: 0.2rem;
+}
+.result__arrow { color: var(--brass-bright); font-size: 1.25rem; }
+.result__via { margin: 0 0 1rem; font-size: 0.86rem; color: rgba(238, 242, 239, 0.5); font-style: italic; }
+.result__advies {
+  font-family: var(--font-mono); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--brass-bright); margin: 0 0 1.3rem; padding-bottom: 1.3rem; border-bottom: 1px dashed var(--line);
+}
+.result__status { font-size: 0.95rem; color: rgba(238, 242, 239, 0.55); }
+.result__status--error { color: var(--error); }
+.result__status--error::before { content: '⚠ '; }
+.result__next { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1.1rem; }
+.result__next-label {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(238, 242, 239, 0.45);
+}
+.result__next-time { font-family: var(--font-mono); font-size: 2rem; font-weight: 600; color: var(--paper); }
+.result__next-ref { font-size: 0.88rem; color: var(--tide-line); }
+.result__list {
+  list-style: none; margin: 0; padding: 1rem 0 0; border-top: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 0.4rem;
+  font-family: var(--font-mono); font-size: 0.9rem; color: rgba(238, 242, 239, 0.6);
+}
+.result__list-label {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: rgba(238, 242, 239, 0.4); margin-bottom: 0.3rem; font-family: var(--font-body);
+}
+
+.result__no-route {
+  padding: 1.5rem 1.75rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: rgba(238, 242, 239, 0.55);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  animation: card-in 0.3s var(--ease);
+}
+.result__no-route strong { color: var(--paper); }
+
+/* Skeleton loading state — vervangt platte "laden…"-tekst */
+.result__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.result__skeleton-line {
+  height: 0.85rem;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(238, 242, 239, 0.06) 25%,
+    rgba(238, 242, 239, 0.12) 37%,
+    rgba(238, 242, 239, 0.06) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+.result__skeleton-line--wide { width: 55%; height: 1.3rem; }
+.result__skeleton-line--mid { width: 38%; }
+.result__skeleton-line--narrow { width: 70%; }
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result__skeleton-line { animation: none; opacity: 0.6; }
+}
+
+.footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+.footer p { font-size: 0.8rem; line-height: 1.6; color: rgba(238, 242, 239, 0.45); max-width: 68ch; }
+
+.result__opmerking {
+  margin: -0.9rem 0 1.1rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(238, 242, 239, 0.4);
+  font-style: italic;
+}
+.result__next-time--window { font-size: 1.5rem; }
+.result__next-tot {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: rgba(238, 242, 239, 0.4);
+  font-weight: 400;
+  font-style: italic;
+  margin: 0 0.2rem;
+}
+
+/* Meerdere momenten (bij gekozen datum) */
+.result__moment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.result__moment:first-child { padding-top: 0; }
+.result__moment:last-child { border-bottom: none; padding-bottom: 0; }
+.result__moment-time {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--paper);
+}
+
+/* Wind */
+.result__wind {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: rgba(238, 242, 239, 0.5);
+}
+.result__wind svg { width: 13px; height: 13px; flex-shrink: 0; }
+.result__wind--warn { color: var(--error); }
+
+.result__warning { margin-top: 0.3rem; }
+.result__warning p {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.3rem 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #e0a458;
+}
+.result__warning svg {
+  width: 14px; height: 14px; flex-shrink: 0; margin-top: 0.2rem;
+}
+
+/* Meteo & astro-blok (huidig weer, zon op/onder) voor het vertrekpunt */
+.meteo {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.meteo h2 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0 0 1rem;
+  color: rgba(238, 242, 239, 0.85);
+}
+.meteo__status {
+  font-size: 0.9rem;
+  color: rgba(238, 242, 239, 0.5);
+}
+.meteo__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1.25rem 1.5rem;
+}
+.meteo__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.meteo__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(238, 242, 239, 0.4);
+}
+.meteo__value {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  color: var(--paper);
+}
+.meteo__value--sub {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: rgba(238, 242, 239, 0.5);
+  margin-top: -0.15rem;
+}
+.meteo__value--warn { color: var(--error); }
+
+.footer__copyright {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(238, 242, 239, 0.35);
+}
+
+@media (max-width: 600px) {
+  .picker__label { display: none; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 2rem 1.1rem 3rem; }
+  .header { flex-direction: column; }
+  .result__next-time { font-size: 1.6rem; }
+  .meteo { font-size: 0.8rem; }
+  .meteo__grid { gap: 1rem 1.25rem; }
+}

@@ -3,6 +3,17 @@ import fs from 'node:fs'
 import path from 'node:path'
 import handler from './api/getij.js'
 
+// Content-types voor de statische bestanden die devserver.mjs kan serveren.
+// index.html is opgesplitst in losse CSS/JS-bestanden (zie PROJECT-OVERZICHT.md
+// sectie 1) — deze server moet die dus ook kunnen uitleveren, niet alleen html.
+const CONTENT_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.json': 'application/json; charset=utf-8',
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost')
   const query = Object.fromEntries(url.searchParams.entries())
@@ -22,12 +33,15 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
-  if (url.pathname === '/' || url.pathname.endsWith('.html')) {
-    const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1)
+  const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1)
+  const ext = path.extname(file)
+  const contentType = CONTENT_TYPES[ext]
+
+  if (contentType) {
     try {
-      const html = fs.readFileSync(path.join(process.cwd(), file))
-      res.writeHead(200, { 'Content-Type': 'text/html' })
-      res.end(html)
+      const body = fs.readFileSync(path.join(process.cwd(), file))
+      res.writeHead(200, { 'Content-Type': contentType })
+      res.end(body)
     } catch {
       res.writeHead(404); res.end('not found')
     }
