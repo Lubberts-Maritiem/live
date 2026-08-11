@@ -18,6 +18,8 @@ export const REFERENCE_POINTS = {
   ameland: 'ameland.nes',
   schiermonnikoog: 'schiermonnikoog.waddenzee',
   lauwersoog: 'lauwersoog.waddenzee',
+  ijmuiden: 'ijmuiden.buitenhaven',
+  scheveningen: 'scheveningen',
 }
 
 function pad(n) {
