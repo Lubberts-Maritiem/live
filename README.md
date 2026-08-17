@@ -111,7 +111,19 @@ van/naar-matrix — dat waren de twee soorten fouten die eerder zijn misgegaan
 - **Actueel weer & zon**: live blok met huidig weer en zon op/onder voor het
   gekozen vertrekpunt (Open-Meteo). Ververst automatisch bij het wisselen
   van "van".
+- **Opstartanimatie**: korte merkanimatie bij het laden van de pagina,
+  gekoppeld aan de daadwerkelijke gereedheid van de eerste getij- en
+  winddata (met een vangnet-timeout van 4s).
+- **Getijgrafiek**: kleine curve bij het prominent getoonde vertrekmoment die
+  de getijfase rond dat moment laat zien (geen letterlijke waterstand, want
+  daar heeft de RWS-databron geen cijfers voor — zie PROJECT-OVERZICHT.md
+  sectie 11.1).
+- **Golfhoogte**: opgehaald bij de Open-Meteo Marine API, naast de wind per
+  vertrekmoment en in het "Actueel weer & zon"-blok.
+- **Delen & agenda**: twee kleine knopjes bij het prominent getoonde
+  vertrekmoment om het te delen (Web Share API / klembord) of als `.ics`
+  toe te voegen aan een agenda-app.
 
-E-mailherinnering en een visuele routekaart zijn bewust nog niet gebouwd —
-zie PROJECT-OVERZICHT.md secties 5 en 6 voor de status en het benodigde
-vervolgwerk.
+E-mailherinnering, een visuele routekaart, en een astronomische
+nacht-waarschuwing zijn bewust nog niet gebouwd — zie PROJECT-OVERZICHT.md
+secties 5, 6 en 11.5 voor de status en het benodigde vervolgwerk.

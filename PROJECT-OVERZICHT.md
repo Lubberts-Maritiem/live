@@ -571,9 +571,125 @@ gekopieerd:
   verbonden) om de animatie daadwerkelijk te zien bewegen — visuele controle
   door de gebruiker zelf (of een volgende sessie) is aan te raden.
 
+## 11. Getijgrafiek, golfhoogte, deel-/agendaknop (vervolgsessie, zelfde dag)
+
+Na het beantwoorden van "welke elementen zijn een goede aanvulling" koos de
+gebruiker drie van de vijf voorgestelde ideeën: getijgrafiek per route,
+golfhoogte naast de wind, en een deel-/agendaknop per vertrekmoment (expliciet
+"klein en subtiel"). Niet gekozen (nog open, zie sectie 6 en hieronder):
+astronomische nacht-check, KNMI-marifoonbericht/zeewaarschuwingen.
+
+### 11.1 Getijgrafiek per vertrekmoment
+
+- `buildTideCurveSvg(extremen, departure)` in `app.js`: genereert een kleine
+  inline SVG (sparkline-stijl, `viewBox="0 0 300 56"`, `preserveAspectRatio:
+  none` zodat hij de kaartbreedte volgt) die de getijfase rond het
+  vertrekmoment toont.
+- **Belangrijke beperking, expliciet in de code-comment vastgelegd**: de
+  RWS-groepering `GETETBRKD2` (die deze site gebruikt) geeft alleen tijdstip
+  + type (hoogwater/laagwater) terug, **geen NAP-waterstand**. De curve is
+  daarom een cosinus-interpolatie tussen opeenvolgende extremen,
+  genormaliseerd 0 (laagwater) - 1 (hoogwater) — dat toont de vorm/fase van
+  het getij, niet een letterlijke waterstand in centimeters. Dit is bewust zo
+  gedaan i.p.v. te doen alsof er echte hoogtedata is.
+- Vensterselectie: pakt de extremen binnen [vertrek − 3u, vertrek (of
+  vertrekEind) + 3u], met een extra punt aan weerszijden voor een vloeiende
+  curve tot aan de randen.
+- Vertrekmarkering: een gearceerde band voor een vensterroute (`offsetMinuten:
+  [a, b]`), een stippellijn voor een vast-moment-route.
+- Alleen getoond bij het prominent weergegeven moment (het "grote" moment —
+  dus bij elke rij als een datum is gekozen, of het ene eerstvolgende moment
+  anders), niet bij de compacte "Daarna"-lijst, om de kaart rustig te houden.
+- Geverifieerd door de functie te isoleren (via een brace-matching extractor,
+  `/tmp/extract_fn.js`) en te draaien tegen **echte, actuele** getijdata van
+  drie verschillende routetypen (een vensterroute, een vast-moment-route, en
+  een nieuwe route met een venster van twee negatieve offsets) — in alle
+  gevallen kloppen de venster-/lijnmarkering en het aantal extreme-punten met
+  het routetype. Edge cases (0 of 1 extreem) getest: geven `''` terug i.p.v.
+  een kapotte SVG.
+
+### 11.2 Golfhoogte naast de wind
+
+- Nieuw: `getWaveForecast()` / `waveAt()` in `app.js`, analoog aan de
+  bestaande `getWindForecast()` / `windAt()`, maar tegen de **Open-Meteo
+  Marine API** (`marine-api.open-meteo.com/v1/marine`, parameters
+  `wave_height,wave_period`) i.p.v. de gewone forecast-API.
+- **Vooraf getest** (curl, sectie-conventie uit sectie 7/8) voor alle 12
+  referentiepunten, inclusief de meest beschutte Waddenzee-punten (Harlingen,
+  Den Oever, Kornwerderzand) — die geven allemaal bruikbare numerieke
+  waarden terug, geen `null`. Wel een kanttekening opgenomen in de
+  code-comment: het onderliggende golfmodel heeft een resolutie van
+  ~25 km, dus voor een beschutte haven is de waarde een benadering van de
+  dichtstbijzijnde open-waterceel, geen meting in de haven zelf.
+  `waveAt()` blijft desondanks defensief geschreven (geeft `null` terug bij
+  ontbrekende/te oude data), voor het geval een toekomstig referentiepunt dat
+  wel tegenkomt.
+- Endpoint: `marine-api.open-meteo.com/v1/marine?latitude=...&longitude=...&
+  hourly=wave_height,wave_period&timezone=Europe%2FAmsterdam&forecast_days=10`.
+- Weergave: toegevoegd aan de bestaande windregel per vertrekmoment
+  (`· golfhoogte 0,8 m`, alleen als er wind- én golfdata is; golf-only als
+  wind ontbreekt), én als extra tegel "Golfhoogte" in het "Actueel weer &
+  zon"-blok (faalt de golf-fetch, dan verdwijnt alleen die tegel, niet het
+  hele blok — apart try/catch-pad).
+
+### 11.3 Deel- en agendaknop per vertrekmoment
+
+Expliciete eis van de gebruiker: "klein en subtiel". Uitgewerkt als twee
+kleine (26px) cirkelvormige icoon-knoppen, dof grijs in rust, brass-accent bij
+hover, alleen zichtbaar bij het prominent getoonde moment (zelfde plek als de
+getijgrafiek).
+
+- **Delen**: gebruikt de Web Share API (`navigator.share()`) als die
+  beschikbaar is (voornaamste geval: mobiel, relevant want dit is een
+  boot-aan-boord-scenario) — deelt een korte tekst met route, tijd en advies.
+  Fallback zonder Web Share API: kopieert dezelfde tekst naar het klembord
+  (`navigator.clipboard.writeText`). Beide paden tonen 1,5s een vinkje op de
+  knop als bevestiging (`flashActionSuccess()`), daarna terug naar het
+  oorspronkelijke icoon.
+- **Agenda**: genereert een `.ics`-bestand (RFC 5545, minimale VEVENT) volledig
+  client-side via een `Blob` + tijdelijke `<a download>`-link, geen server of
+  API nodig. Bestandsnaam bevat de geslugificeerde van/naar-plaatsen en de
+  datum. `DTSTART`/`DTEND` zijn UTC (`formatIcsDate()`), `DTEND` is
+  `vertrekEind` bij een vensterroute of `vertrek + 30 min` bij een vast
+  moment.
+- Implementatie: één gedelegeerde `click`-listener op `#result` (i.p.v. een
+  handler per knop) — blijft werken na elke herrender, want de knoppen zelf
+  worden bij elke `loadRoute()`-aanroep opnieuw aangemaakt.
+- **Opmerking over `slugify()`**: eerste implementatiepoging gebruikte een
+  Unicode-escaperange voor combining diacritical marks (U+0300 t/m U+036F)
+  om diakritische tekens te strippen na NFD-normalisatie; tijdens het
+  schrijven bleken de daadwerkelijke escape-tekens in de bestandsinhoud te
+  zijn vervangen door de letterlijke combining-mark-tekens (een
+  encoding-eigenaardigheid in de sessie, geen bug in het eindresultaat — is
+  ontdekt en gecorrigeerd vóórdat het bestand werd opgeslagen). Uiteindelijke
+  implementatie is bewust simpeler: alle 12
+  plaatsnamen in `ROUTES` zijn al puur ASCII, dus `slugify()` doet nu alleen
+  `toLowerCase()` + niet-alfanumeriek vervangen door `-`, zonder
+  Unicode-normalisatie. Geverifieerd met een script dat het hele bestand
+  scant op combining-mark-tekens (0 gevonden na de fix).
+
+### 11.4 Verificatie
+
+- Marine-API-endpoint getest met `curl` vóór implementatie (zie 11.2).
+- Kernfuncties (`buildTideCurveSvg`, `buildIcsContent`, `buildShareText`,
+  `slugify`, `formatIcsDate`) geïsoleerd getest tegen live, actuele
+  RWS-getijdata voor 3 routes van verschillend type — zie 11.1.
+- `node -c app.js` na elke wijziging, `devserver.mjs` opnieuw gestart en
+  `index.html`/`styles.css`/`app.js`/`/api/getij` gaven `200`.
+  `styles.css`-accolades geteld (gebalanceerd).
+- Zelfde beperking als eerder: geen visuele/pixel-check mogelijk (geen
+  headless browser, Chrome-extensie niet verbonden in deze sessie).
+
+### 11.5 Nog open (niet gekozen deze ronde)
+
+- Astronomische nacht-check i.p.v. vaste 22:00–05:00-klok (zie ook sectie 7).
+- KNMI-marifoonbericht / zeewaarschuwingen (naar analogie van de marifoon-site).
+- Route-kaart (Leaflet) — staat nog steeds open, zie sectie 6.
+
 ---
 
 *Dit document is gegenereerd als hand-off tussen werksessies. De huidige
-bestanden dekken alle features t/m punt 12 in sectie 5 plus de boot-overlay
-uit sectie 10, maar nog geen route-kaart (sectie 6, "Route-kaart" is de
-eerstvolgende openstaande taak).*
+bestanden dekken alle features t/m punt 12 in sectie 5, plus de boot-overlay
+(sectie 10) en de getijgrafiek/golfhoogte/deel-agendaknop (sectie 11), maar
+nog geen route-kaart (sectie 6, "Route-kaart" is de eerstvolgende openstaande
+taak).*

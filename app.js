@@ -14,6 +14,19 @@ const ICON_WIND =
   '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">' +
   '<path d="M2 7h9.5a2.25 2.25 0 1 0-2.1-3"/><path d="M2 13h12.5a2.25 2.25 0 1 1-2.1 3"/></svg>'
 
+// Klein en subtiel: iconen voor de deel-/agendaknoppen per vertrekmoment.
+const ICON_SHARE =
+  '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M10 3v9"/><path d="M6.5 6.5 10 3l3.5 3.5"/><path d="M4 11v4a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4"/></svg>'
+
+const ICON_CALENDAR =
+  '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="3" y="4.5" width="14" height="12" rx="1.5"/><path d="M3 8h14"/><path d="M7 2.5v3M13 2.5v3"/><path d="M10 10.5v4M8 12.5h4"/></svg>'
+
+const ICON_CHECK =
+  '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 10.5 8 14l8-8"/></svg>'
+
 // ---------------------------------------------------------------------------
 // Tijd- en datumformattering
 // ---------------------------------------------------------------------------
@@ -127,6 +140,58 @@ function isNachtVenster(date) {
   return uur >= NACHT_START_UUR || uur < NACHT_EIND_UUR
 }
 
+// ---------------------------------------------------------------------------
+// Golfhoogte (Open-Meteo Marine API — zelfde aanpak als de wind hierboven).
+// Let op: dit is een golfmodel op ~25 km resolutie, dus voor beschutte
+// Waddenzee-punten (bijv. Harlingen) is de waarde een benadering van de
+// dichtstbijzijnde open-waterceel, niet een letterlijke meting in de haven.
+// Getest en werkend bevonden voor alle 12 referentiepunten.
+// ---------------------------------------------------------------------------
+
+const waveCache = {}
+
+async function getWaveForecast(referentiepunt) {
+  if (waveCache[referentiepunt]) return waveCache[referentiepunt]
+
+  const coords = REFERENCE_COORDS[referentiepunt]
+  if (!coords) return null
+
+  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${coords.lat}&longitude=${coords.lon}&hourly=wave_height,wave_period&timezone=Europe%2FAmsterdam&forecast_days=10`
+
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    waveCache[referentiepunt] = data.hourly
+    return data.hourly
+  } catch {
+    return null
+  }
+}
+
+/** Vindt het dichtstbijzijnde uur in de golfdata voor een gegeven moment. */
+function waveAt(hourly, date) {
+  if (!hourly) return null
+  const target = date.getTime()
+  let closestIdx = -1
+  let closestDiff = Infinity
+  hourly.time.forEach((t, i) => {
+    const diff = Math.abs(new Date(t).getTime() - target)
+    if (diff < closestDiff) {
+      closestDiff = diff
+      closestIdx = i
+    }
+  })
+  if (closestIdx === -1) return null
+  if (closestDiff > 90 * 60000) return null
+  const hoogte = hourly.wave_height[closestIdx]
+  if (hoogte == null) return null
+  return {
+    hoogte,
+    periode: hourly.wave_period ? hourly.wave_period[closestIdx] : null,
+  }
+}
+
 // Compacte NL-vertaling van de meest voorkomende WMO weather codes die
 // Open-Meteo teruggeeft (0-99, standaard mapping).
 const WMO_LABELS = {
@@ -183,6 +248,11 @@ async function loadMeteoVoorVertrekpunt(referentiepunt, label) {
 
     const windGevaar = c.wind_gusts_10m >= WIND_STOTEN_WAARSCHUWING_KNOPEN || c.wind_speed_10m >= WIND_WAARSCHUWING_KNOPEN
 
+    // Golfhoogte is een bonus naast wind: als deze fetch faalt of geen data
+    // teruggeeft, laat het tegeltje gewoon weg i.p.v. het hele blok te breken.
+    const waveHourly = await getWaveForecast(referentiepunt)
+    const waveNow = waveAt(waveHourly, new Date())
+
     meteoBody.innerHTML = `
       <div class="meteo__grid">
         <div class="meteo__item">
@@ -195,6 +265,12 @@ async function loadMeteoVoorVertrekpunt(referentiepunt, label) {
           <span class="meteo__value${windGevaar ? ' meteo__value--warn' : ''}">${windRichtingLabel(c.wind_direction_10m)} ${Math.round(c.wind_speed_10m)} kn</span>
           <span class="meteo__value--sub">stoten tot ${Math.round(c.wind_gusts_10m)} kn</span>
         </div>
+        ${waveNow ? `
+        <div class="meteo__item">
+          <span class="meteo__label">Golfhoogte</span>
+          <span class="meteo__value">${waveNow.hoogte.toFixed(1).replace('.', ',')} m</span>
+          ${waveNow.periode != null ? `<span class="meteo__value--sub">periode ${Math.round(waveNow.periode)} s</span>` : ''}
+        </div>` : ''}
         <div class="meteo__item">
           <span class="meteo__label">Zon op</span>
           <span class="meteo__value">${formatTime(new Date(d.sunrise[0]))}</span>
@@ -395,9 +471,10 @@ async function loadRoute(route, card, gekozenDatum) {
   `
 
   try {
-    const [getijRes, windHourly] = await Promise.all([
+    const [getijRes, windHourly, waveHourly] = await Promise.all([
       fetch(`/api/getij?punt=${route.referentiepunt}&van=${fmt(van)}&tot=${fmt(tot)}`),
       getWindForecast(route.referentiepunt),
+      getWaveForecast(route.referentiepunt),
     ])
     const data = await getijRes.json()
 
@@ -440,21 +517,29 @@ async function loadRoute(route, card, gekozenDatum) {
 
     const renderMoment = (d, groot) => {
       const wind = windAt(windHourly, d.vertrek)
+      const wave = waveAt(waveHourly, d.vertrek)
       const waarschuwingen = buildWaarschuwingen(d, wind)
       const timeLabel = d.isWindow
         ? `${formatDateTime(d.vertrek)} <span class="result__next-tot">tot</span> ${formatTime(d.vertrekEind)}`
         : formatDateTime(d.vertrek)
       const sizeClass = groot ? 'result__next-time' : 'result__moment-time'
 
+      const golfTekst = wave ? `golfhoogte ${wave.hoogte.toFixed(1).replace('.', ',')} m` : ''
       const windHtml = wind
         ? `<span class="result__wind${waarschuwingen.windGevaar ? ' result__wind--warn' : ''}">
-             ${ICON_WIND}${windRichtingLabel(wind.richting)} ${Math.round(wind.snelheid)} kn, stoten tot ${Math.round(wind.stoten)} kn
+             ${ICON_WIND}${windRichtingLabel(wind.richting)} ${Math.round(wind.snelheid)} kn, stoten tot ${Math.round(wind.stoten)} kn${golfTekst ? ` · ${golfTekst}` : ''}
            </span>`
-        : ''
+        : (golfTekst ? `<span class="result__wind">${golfTekst}</span>` : '')
 
       const waarschuwingHtml = waarschuwingen.teksten.length
         ? `<div class="result__warning">${waarschuwingen.teksten.map((t) => `<p>${ICON_WARNING}<span>${t}</span></p>`).join('')}</div>`
         : ''
+
+      // Getijgrafiek en deel-/agendaknoppen alleen bij het prominent getoonde
+      // moment (niet bij de compacte "Daarna"-lijst), om het overzicht rustig
+      // te houden.
+      const tideChartHtml = groot ? buildTideCurveSvg(data.extremen, d) : ''
+      const actionsHtml = groot ? buildActionsHtml(route, d) : ''
 
       return `
         <div class="result__moment">
@@ -464,6 +549,8 @@ async function loadRoute(route, card, gekozenDatum) {
           </span>
           ${windHtml}
           ${waarschuwingHtml}
+          ${tideChartHtml}
+          ${actionsHtml}
         </div>
       `
     }
@@ -492,6 +579,224 @@ async function loadRoute(route, card, gekozenDatum) {
     card.innerHTML = `${header}<p class="result__status result__status--error">Kon getij niet ophalen (${err})</p>`
   }
 }
+
+// ---------------------------------------------------------------------------
+// Getijgrafiek — kleine SVG-curve rond een vertrekmoment.
+// ---------------------------------------------------------------------------
+
+/**
+ * Bouwt een kleine SVG-getijcurve rond een vertrekmoment. De curve is een
+ * cosinus-interpolatie tussen opeenvolgende HW/LW-tijdstippen, genormaliseerd
+ * naar 0 (laagwater) - 1 (hoogwater). Er zijn geen NAP-waarden beschikbaar —
+ * de RWS-groepering GETETBRKD2 geeft alleen tijdstip + type terug — dus dit
+ * toont de vorm/fase van het getij rond het vertrek, geen letterlijke
+ * waterstand in centimeters.
+ */
+function buildTideCurveSvg(extremen, departure) {
+  if (!extremen || extremen.length < 2) return ''
+
+  const sorted = extremen
+    .map((e) => ({ tijdstip: new Date(e.tijdstip), type: e.type }))
+    .sort((a, b) => a.tijdstip - b.tijdstip)
+
+  const vertrekEind = departure.isWindow ? departure.vertrekEind : departure.vertrek
+  const marge = 3 * 3600000 // 3 uur speling aan weerszijden voor context
+  const vensterStart = new Date(Math.min(departure.vertrek.getTime(), departure.eventTime.getTime()) - marge)
+  const vensterEind = new Date(Math.max(vertrekEind.getTime(), departure.eventTime.getTime()) + marge)
+
+  let startIdx = sorted.findIndex((e) => e.tijdstip >= vensterStart)
+  if (startIdx === -1) startIdx = sorted.length - 1
+  startIdx = Math.max(0, startIdx - 1)
+  let endIdx = sorted.length - 1
+  for (let i = startIdx; i < sorted.length; i++) {
+    if (sorted[i].tijdstip > vensterEind) { endIdx = i; break }
+  }
+  const punten = sorted.slice(startIdx, endIdx + 1)
+  if (punten.length < 2) return ''
+
+  const tMin = punten[0].tijdstip.getTime()
+  const tMax = punten[punten.length - 1].tijdstip.getTime()
+  if (tMax === tMin) return ''
+
+  const W = 300, H = 56, padX = 3, padTop = 6, padBottom = 6
+  const xFor = (t) => padX + ((t - tMin) / (tMax - tMin)) * (W - 2 * padX)
+  const yFor = (amp) => padTop + (1 - amp) * (H - padTop - padBottom)
+  const ampFor = (type) => (type === 'hoogwater' ? 1 : 0)
+
+  // Curve samplen met een cosinus-ease tussen elk paar opeenvolgende extremen
+  // (standaardbenadering voor een half-dagelijks getij zonder amplitudedata).
+  const SAMPLES = 16
+  let pathD = ''
+  punten.forEach((p, i) => {
+    if (i === 0) {
+      pathD += `M ${xFor(p.tijdstip.getTime()).toFixed(1)} ${yFor(ampFor(p.type)).toFixed(1)}`
+      return
+    }
+    const vorige = punten[i - 1]
+    const t0 = vorige.tijdstip.getTime()
+    const t1 = p.tijdstip.getTime()
+    const a0 = ampFor(vorige.type)
+    const a1 = ampFor(p.type)
+    for (let s = 1; s <= SAMPLES; s++) {
+      const frac = s / SAMPLES
+      const amp = a0 + (a1 - a0) * (1 - Math.cos(Math.PI * frac)) / 2
+      const t = t0 + (t1 - t0) * frac
+      pathD += ` L ${xFor(t).toFixed(1)} ${yFor(amp).toFixed(1)}`
+    }
+  })
+
+  const vlakD = `${pathD} L ${xFor(tMax).toFixed(1)} ${(H - padBottom).toFixed(1)} L ${xFor(tMin).toFixed(1)} ${(H - padBottom).toFixed(1)} Z`
+
+  const markers = punten.map((p) => {
+    const cx = xFor(p.tijdstip.getTime())
+    const cy = yFor(ampFor(p.type))
+    return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2" class="tidechart__extreme" />`
+  }).join('')
+
+  // Vertrekmarkering: een band voor een venster, een lijn voor een vast moment.
+  let vertrekMarker
+  if (departure.isWindow) {
+    const x0 = xFor(departure.vertrek.getTime())
+    const x1 = xFor(departure.vertrekEind.getTime())
+    vertrekMarker = `<rect x="${Math.min(x0, x1).toFixed(1)}" y="${padTop}" width="${Math.max(1, Math.abs(x1 - x0)).toFixed(1)}" height="${(H - padTop - padBottom).toFixed(1)}" class="tidechart__venster" />`
+  } else {
+    const x = xFor(departure.vertrek.getTime())
+    vertrekMarker = `<line x1="${x.toFixed(1)}" y1="${padTop}" x2="${x.toFixed(1)}" y2="${(H - padBottom).toFixed(1)}" class="tidechart__vertreklijn" />`
+  }
+
+  return `
+    <svg class="result__tidechart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Getijverloop rond het vertrekmoment">
+      <path d="${vlakD}" class="tidechart__vlak" />
+      ${vertrekMarker}
+      <path d="${pathD}" fill="none" class="tidechart__lijn" />
+      ${markers}
+    </svg>
+  `
+}
+
+// ---------------------------------------------------------------------------
+// Delen & agenda — klein en subtiel, volledig client-side (geen server nodig).
+// ---------------------------------------------------------------------------
+
+function buildActionsHtml(route, d) {
+  const vertrekAttr = `data-vertrek="${d.vertrek.toISOString()}"`
+  const eindAttr = d.isWindow ? ` data-vertrek-eind="${d.vertrekEind.toISOString()}"` : ''
+  return `
+    <div class="result__actions">
+      <button class="result__action" type="button" data-action="share" data-route-id="${route.id}" ${vertrekAttr}${eindAttr} aria-label="Deel dit vertrekmoment" title="Delen">${ICON_SHARE}</button>
+      <button class="result__action" type="button" data-action="ics" data-route-id="${route.id}" ${vertrekAttr}${eindAttr} aria-label="Toevoegen aan agenda" title="Toevoegen aan agenda">${ICON_CALENDAR}</button>
+    </div>
+  `
+}
+
+function buildShareText(route, departure) {
+  const tijd = departure.isWindow
+    ? `${formatDateTime(departure.vertrek)} tot ${formatTime(departure.vertrekEind)}`
+    : formatDateTime(departure.vertrek)
+  return `Vertrek ${route.van} → ${route.naar}: ${tijd}. ${route.advies}. Bron: wadoversteken.nl`
+}
+
+function formatIcsDate(date) {
+  return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+}
+
+function icsEscape(text) {
+  return String(text).replace(/[\\;,]/g, (m) => '\\' + m).replace(/\n/g, '\\n')
+}
+
+function buildIcsContent(route, departure) {
+  const start = departure.vertrek
+  const eind = departure.isWindow ? departure.vertrekEind : new Date(departure.vertrek.getTime() + 30 * 60000)
+  const uid = `${route.id}-${start.getTime()}@wadoversteken.nl`
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//wadoversteken.nl//vertrekvenster//NL',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${formatIcsDate(new Date())}`,
+    `DTSTART:${formatIcsDate(start)}`,
+    `DTEND:${formatIcsDate(eind)}`,
+    `SUMMARY:${icsEscape(`Vertrek ${route.van} → ${route.naar}`)}`,
+    `DESCRIPTION:${icsEscape(`${route.advies}. Bron: wadoversteken.nl`)}`,
+    `LOCATION:${icsEscape(route.van)}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n')
+}
+
+// Plaatsnamen in ROUTES bevatten geen diakritische tekens, dus een simpele
+// vervanging van niet-alfanumerieke tekens volstaat hier.
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+/** Toont kort een vinkje op de knop als bevestiging, herstelt daarna. */
+function flashActionSuccess(btn) {
+  const origineel = btn.innerHTML
+  btn.innerHTML = ICON_CHECK
+  btn.classList.add('result__action--done')
+  setTimeout(() => {
+    btn.innerHTML = origineel
+    btn.classList.remove('result__action--done')
+  }, 1500)
+}
+
+async function handleShare(route, departure, btn) {
+  const text = buildShareText(route, departure)
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'wadoversteken.nl', text })
+      flashActionSuccess(btn)
+    } catch {
+      // Gebruiker annuleerde het deel-dialoogvenster — geen foutmelding nodig.
+    }
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    flashActionSuccess(btn)
+  } catch {
+    // Klembord niet beschikbaar (bv. geen HTTPS-context) — knop blijft
+    // gewoon klikbaar voor een volgende poging.
+  }
+}
+
+function handleIcs(route, departure, btn) {
+  const ics = buildIcsContent(route, departure)
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `vertrek-${slugify(route.van)}-${slugify(route.naar)}-${departure.vertrek.toISOString().slice(0, 10)}.ics`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  flashActionSuccess(btn)
+}
+
+// Eén gedelegeerde listener i.p.v. per knop een handler: werkt ook na elke
+// herrender van #result (de knoppen worden steeds opnieuw aangemaakt).
+resultEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.result__action')
+  if (!btn) return
+
+  const route = ROUTES.find((r) => r.id === btn.dataset.routeId)
+  if (!route) return
+
+  const departure = {
+    vertrek: new Date(btn.dataset.vertrek),
+    vertrekEind: btn.dataset.vertrekEind ? new Date(btn.dataset.vertrekEind) : null,
+    isWindow: Boolean(btn.dataset.vertrekEind),
+  }
+
+  if (btn.dataset.action === 'share') handleShare(route, departure, btn)
+  else if (btn.dataset.action === 'ics') handleIcs(route, departure, btn)
+})
 
 // ---------------------------------------------------------------------------
 // Event-afhandeling

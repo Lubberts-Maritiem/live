@@ -321,6 +321,42 @@ body {
 }
 .result__no-route strong { color: var(--paper); }
 
+/* Getijgrafiek — kleine sparkline-achtige curve rond het vertrekmoment. */
+.result__tidechart {
+  width: 100%;
+  height: 52px;
+  display: block;
+  margin: 0.9rem 0 0.1rem;
+}
+.tidechart__vlak { fill: rgba(61, 107, 111, 0.16); }
+.tidechart__lijn { stroke: var(--tide-line); stroke-width: 1.6; }
+.tidechart__extreme { fill: var(--ink-deep); stroke: var(--brass-bright); stroke-width: 1; }
+.tidechart__venster { fill: rgba(217, 168, 92, 0.14); }
+.tidechart__vertreklijn { stroke: var(--brass-bright); stroke-width: 1.3; stroke-dasharray: 2 2; }
+
+/* Delen & agenda — klein en subtiel, alleen bij het prominent getoonde moment. */
+.result__actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+.result__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: rgba(238, 242, 239, 0.4);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.result__action svg { width: 13px; height: 13px; }
+.result__action:hover { border-color: var(--brass); color: var(--brass-bright); }
+.result__action--done { border-color: var(--success); color: var(--success); }
+
 /* Skeleton loading state — vervangt platte "laden…"-tekst */
 .result__skeleton {
   display: flex;
