@@ -561,7 +561,8 @@ gekopieerd:
   `renderResult()` zijn aangepast zodat ze hun fetch-promise teruggeven
   i.p.v. "fire and forget" te zijn, en een nieuwe `boot()`-functie in
   `app.js` wacht via `Promise.race()` op zowel die twee samen (`Promise.all`)
-  als een vaste vangnet-timeout van `BOOT_MAX_WACHTTIJD_MS` (4000 ms) — wat
+  als een vaste vangnet-timeout van `BOOT_MAX_WACHTTIJD_MS` (3000 ms, was
+  4000 ms — op verzoek verkort in een latere sessie, zie sectie 14) — wat
   eerder is. Zo verdwijnt de overlay zo snel als de data het toelaat, maar
   hangt de gebruiker nooit vast als een fetch traag is of faalt.
 - Geverifieerd: syntax-check op `app.js`, geen dubbele `refreshMeteo()`/
@@ -838,18 +839,93 @@ Node-context tegen live RWS-data voor Texel (opgehaald via de lokale
 
 - `favicon.svg` is orphaned (niet meer gebruikt, niet verwijderd) — pas
   verwijderen na expliciete toestemming van de gebruiker.
-- README.md is bijgewerkt (zie feature-beschrijving getijgrafiek), maar
-  bevat nog een verwijzing naar `favicon.svg` als paginaicoon in het
-  bestandsoverzicht — zie sectie 9 van dit document voor de bestandenlijst,
-  die eveneens nog `favicon.svg` noemt in plaats van de nieuwe PNG-set.
+- README.md is bijgewerkt, maar bevat nog een verwijzing naar `favicon.svg`
+  als paginaicoon in het bestandsoverzicht — zie sectie 9 van dit document
+  voor de bestandenlijst, die eveneens nog `favicon.svg` noemt in plaats van
+  de nieuwe PNG-set.
+
+---
+
+## 14. Herzien logo, getijgrafiek verwijderd, kortere boot-timeout (vervolgsessie, zelfde dag)
+
+Drie kleine, losse aanpassingen in dezelfde sessie na sectie 13.
+
+### 14.1 Logo opnieuw vervangen
+
+De gebruiker gaf aan dat het logo uit sectie 13.1 niet de juiste versie was
+en uploadde een nieuwe afbeelding (cirkelvormig, zeilboot bij zonsondergang
+met een vuurtoren op de achtergrond, gouden rand). Deze had, anders dan de
+vorige upload, geen transparante hoeken maar een egale witte achtergrond
+buiten de cirkel (JPG, geen alphakanaal).
+
+Verwerking: met PIL een flood-fill vanuit de vier hoeken (`ImageDraw.floodfill`,
+tolerantie 18) om alleen de aaneengesloten witte achtergrond buiten de cirkel
+transparant te maken, zonder de cirkel-inhoud zelf te raken. Vervolgens
+opnieuw `logo.png` (256×256) en `favicon.png` (64×64) gegenereerd met
+transparante hoeken — zelfde bestandsnamen, dus geen wijzigingen nodig in
+`index.html`/`styles.css`. Voor `apple-touch-icon.png` (180×180) is bewust
+gekozen om **niet** transparant te laten: iOS gaat niet consistent om met
+alphakanalen in touch-icons, dus die variant is eerst op een wit vlak
+gecomponeerd (`Image.alpha_composite`) en pas daarna verkleind.
+
+Ook is het logo in de header vergroot (44px → 72px) en verticaal
+gecentreerd naast de titel/subtekst (`.header { align-items: flex-start }`
+→ `align-items: center`, `gap` iets ruimer), inclusief een gecentreerde
+mobiele weergave (`@media (max-width: 480px)`: `align-items: center;
+text-align: center;` toegevoegd aan de bestaande `flex-direction: column`).
+
+**Verificatie**: via `devserver.mjs` + curl bevestigd dat alle drie
+PNG-bestanden nog `200 image/png` geven, met Pillow gecontroleerd dat
+`logo.png`/`favicon.png` RGBA zijn (transparante hoeken) en
+`apple-touch-icon.png` RGB is (geen alphakanaal), en dat de HTML het
+`width="72" height="72"`-attribuut op de header-afbeelding bevat.
+
+### 14.2 Getijgrafiek volledig verwijderd
+
+Na oplevering van sectie 13.2 gaf de gebruiker aan dat de curve "geen
+toevoeging" was en volledig weg mag, tussen de windregel en de
+deel-/agendaknoppen.
+
+Verwijderd: de `buildTideCurveSvg()`-functie en de bijbehorende
+sectiecommentaar uit `app.js` (inclusief de aanroep en de
+`${tideChartHtml}`-plek in `renderMoment()`), en alle `.result__tidechart`/
+`.tidechart__*`-regels uit `styles.css`. De CSS-variabele `--tide-line`
+blijft staan — die wordt ook gebruikt voor `.result__next-ref` (de
+HW/LW-referentieregel) en de datepicker-stip, dus die is niet
+getijgrafiek-specifiek.
+
+**Verificatie**: `node -c app.js` foutloos, accoladebalans in `styles.css`
+klopt, en een grep op `buildTideCurveSvg`/`tidechart`/`result__tidechart`
+over `app.js`, `styles.css` en `index.html` levert nul treffers meer op.
+README.md is bijgewerkt (de "Getijgrafiek"-bullet uit de featurelijst is
+verwijderd).
+
+### 14.3 Boot-overlay: kortere vangnet-timeout
+
+`BOOT_MAX_WACHTTIJD_MS` in `app.js` is op verzoek verlaagd van 4000 naar
+3000 ms. Dit is puur de vangnet-timeout voor `Promise.race()` (zie sectie
+10) — als de getij-/winddata sneller binnen is, verdwijnt de overlay nog
+steeds eerder; dit verkort alleen het absolute maximum bij een trage of
+falende fetch. README.md ("vangnet-timeout van 4s" → "3s") en sectie 10
+hierboven zijn bijgewerkt.
+
+### 14.4 Nog open
+
+- `favicon.svg` blijft orphaned, zie 13.3/14.1 — nog steeds niet verwijderd
+  zonder expliciete toestemming.
+- De featurelijst in README.md noemt de getijgrafiek niet meer; de
+  eerdere verwijzingen naar PROJECT-OVERZICHT.md secties 11.1/13.2 in die
+  bullet zijn daarmee ook vervallen (die secties blijven wel bestaan als
+  historisch verslag van de nu-weer-verwijderde feature).
 
 ---
 
 *Dit document is gegenereerd als hand-off tussen werksessies. De huidige
-bestanden dekken alle features t/m punt 12 in sectie 5, plus de boot-overlay
-(sectie 10), de getijgrafiek/golfhoogte/deel-agendaknop (sectie 11), de
-wantijen-uitleg (sectie 12), en de logo/favicon-vervanging plus de
-"nu"-gecentreerde getijgrafiek (sectie 13), maar nog geen route-kaart
-(sectie 6, "Route-kaart" is de eerstvolgende openstaande taak), nog geen
+bestanden dekken alle features t/m punt 12 in sectie 5 (m.u.v. de
+getijgrafiek, die in sectie 14.2 weer is verwijderd), plus de boot-overlay
+(sectie 10, timeout verkort in 14.3), golfhoogte en de deel-/agendaknop
+(sectie 11), de wantijen-uitleg (sectie 12), en het huidige logo/favicon
+(sectie 13, herzien in 14.1), maar nog geen route-kaart (sectie 6,
+"Route-kaart" is de eerstvolgende openstaande taak), nog geen
 dieptestaat-data (sectie 12.4), en `favicon.svg` staat nog ongebruikt in de
-repo (sectie 13.3).*
+repo (sectie 13.3/14.4).*

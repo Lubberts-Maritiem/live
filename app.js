@@ -535,10 +535,8 @@ async function loadRoute(route, card, gekozenDatum) {
         ? `<div class="result__warning">${waarschuwingen.teksten.map((t) => `<p>${ICON_WARNING}<span>${t}</span></p>`).join('')}</div>`
         : ''
 
-      // Getijgrafiek en deel-/agendaknoppen alleen bij het prominent getoonde
-      // moment (niet bij de compacte "Daarna"-lijst), om het overzicht rustig
-      // te houden.
-      const tideChartHtml = groot ? buildTideCurveSvg(data.extremen, d) : ''
+      // Deel-/agendaknoppen alleen bij het prominent getoonde moment (niet bij
+      // de compacte "Daarna"-lijst), om het overzicht rustig te houden.
       const actionsHtml = groot ? buildActionsHtml(route, d) : ''
 
       return `
@@ -549,7 +547,6 @@ async function loadRoute(route, card, gekozenDatum) {
           </span>
           ${windHtml}
           ${waarschuwingHtml}
-          ${tideChartHtml}
           ${actionsHtml}
         </div>
       `
@@ -578,112 +575,6 @@ async function loadRoute(route, card, gekozenDatum) {
     card.removeAttribute('aria-label')
     card.innerHTML = `${header}<p class="result__status result__status--error">Kon getij niet ophalen (${err})</p>`
   }
-}
-
-// ---------------------------------------------------------------------------
-// Getijgrafiek — kleine SVG-curve rond een vertrekmoment.
-// ---------------------------------------------------------------------------
-
-/**
- * Bouwt een kleine SVG-getijcurve gecentreerd op het huidige moment: een
- * vast bereik van 12 uur vóór tot 12 uur ná "nu" (dus altijd 24 uur breed,
- * "nu" staat altijd precies in het midden — zie de dunne "nu"-lijn). De
- * curve is een cosinus-interpolatie tussen opeenvolgende HW/LW-tijdstippen,
- * genormaliseerd naar 0 (laagwater) - 1 (hoogwater). Er zijn geen
- * NAP-waarden beschikbaar — de RWS-groepering GETETBRKD2 geeft alleen
- * tijdstip + type terug — dus dit toont de vorm/fase van het getij, geen
- * letterlijke waterstand in centimeters.
- *
- * Het geadviseerde vertrekmoment blijft gemarkeerd (band voor een venster,
- * lijn voor een vast moment). Valt dat buiten de 24 uur rond nu, dan wordt
- * de markering simpelweg door de SVG-viewbox afgesneden — dat is prima,
- * "nu" is het vaste ankerpunt, niet het vertrekmoment.
- */
-function buildTideCurveSvg(extremen, departure) {
-  if (!extremen || extremen.length < 2) return ''
-
-  const sorted = extremen
-    .map((e) => ({ tijdstip: new Date(e.tijdstip), type: e.type }))
-    .sort((a, b) => a.tijdstip - b.tijdstip)
-
-  const now = new Date()
-  const marge = 12 * 3600000 // vast bereik: 12 uur voor en na nu
-  const tMin = now.getTime() - marge
-  const tMax = now.getTime() + marge
-
-  let startIdx = sorted.findIndex((e) => e.tijdstip.getTime() >= tMin)
-  if (startIdx === -1) startIdx = sorted.length - 1
-  startIdx = Math.max(0, startIdx - 1)
-  let endIdx = sorted.length - 1
-  for (let i = startIdx; i < sorted.length; i++) {
-    if (sorted[i].tijdstip.getTime() > tMax) { endIdx = i; break }
-  }
-  const punten = sorted.slice(startIdx, endIdx + 1)
-  if (punten.length < 2) return ''
-
-  const W = 300, H = 56, padX = 3, padTop = 6, padBottom = 6
-  const xFor = (t) => padX + ((t - tMin) / (tMax - tMin)) * (W - 2 * padX)
-  const yFor = (amp) => padTop + (1 - amp) * (H - padTop - padBottom)
-  const ampFor = (type) => (type === 'hoogwater' ? 1 : 0)
-
-  // Curve samplen met een cosinus-ease tussen elk paar opeenvolgende extremen
-  // (standaardbenadering voor een half-dagelijks getij zonder amplitudedata).
-  const SAMPLES = 16
-  let pathD = ''
-  punten.forEach((p, i) => {
-    if (i === 0) {
-      pathD += `M ${xFor(p.tijdstip.getTime()).toFixed(1)} ${yFor(ampFor(p.type)).toFixed(1)}`
-      return
-    }
-    const vorige = punten[i - 1]
-    const t0 = vorige.tijdstip.getTime()
-    const t1 = p.tijdstip.getTime()
-    const a0 = ampFor(vorige.type)
-    const a1 = ampFor(p.type)
-    for (let s = 1; s <= SAMPLES; s++) {
-      const frac = s / SAMPLES
-      const amp = a0 + (a1 - a0) * (1 - Math.cos(Math.PI * frac)) / 2
-      const t = t0 + (t1 - t0) * frac
-      pathD += ` L ${xFor(t).toFixed(1)} ${yFor(amp).toFixed(1)}`
-    }
-  })
-
-  const vlakD = `${pathD} L ${xFor(tMax).toFixed(1)} ${(H - padBottom).toFixed(1)} L ${xFor(tMin).toFixed(1)} ${(H - padBottom).toFixed(1)} Z`
-
-  const markers = punten.map((p) => {
-    const cx = xFor(p.tijdstip.getTime())
-    const cy = yFor(ampFor(p.type))
-    return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2" class="tidechart__extreme" />`
-  }).join('')
-
-  // Vertrekmarkering: een band voor een venster, een lijn voor een vast moment.
-  // Valt buiten [tMin, tMax], dan tekent xFor() een coördinaat buiten de
-  // viewBox en wordt de markering automatisch afgesneden (preserveAspectRatio
-  // + geen overflow) — geen aparte gevallen nodig.
-  let vertrekMarker
-  if (departure.isWindow) {
-    const x0 = xFor(departure.vertrek.getTime())
-    const x1 = xFor(departure.vertrekEind.getTime())
-    vertrekMarker = `<rect x="${Math.min(x0, x1).toFixed(1)}" y="${padTop}" width="${Math.max(1, Math.abs(x1 - x0)).toFixed(1)}" height="${(H - padTop - padBottom).toFixed(1)}" class="tidechart__venster" />`
-  } else {
-    const x = xFor(departure.vertrek.getTime())
-    vertrekMarker = `<line x1="${x.toFixed(1)}" y1="${padTop}" x2="${x.toFixed(1)}" y2="${(H - padBottom).toFixed(1)}" class="tidechart__vertreklijn" />`
-  }
-
-  // "Nu"-lijn: staat per constructie altijd precies op de horizontale
-  // middenas (xFor(now) === W / 2), dus geen aparte berekening nodig.
-  const xNu = (W / 2).toFixed(1)
-  const nuMarker = `<line x1="${xNu}" y1="${padTop}" x2="${xNu}" y2="${(H - padBottom).toFixed(1)}" class="tidechart__nu" />`
-
-  return `
-    <svg class="result__tidechart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Getijverloop van 12 uur voor tot 12 uur na nu, met het vertrekmoment gemarkeerd">
-      <path d="${vlakD}" class="tidechart__vlak" />
-      ${vertrekMarker}
-      <path d="${pathD}" fill="none" class="tidechart__lijn" />
-      ${markers}
-      ${nuMarker}
-    </svg>
-  `
 }
 
 // ---------------------------------------------------------------------------
@@ -837,7 +728,7 @@ swapBtn.addEventListener('click', () => {
 // een trage of falende fetch de gebruiker nooit blijvend blokkeert.
 // ---------------------------------------------------------------------------
 
-const BOOT_MAX_WACHTTIJD_MS = 4000
+const BOOT_MAX_WACHTTIJD_MS = 3000
 const BOOT_STATUSTEKSTEN = ['Getij ophalen…', 'Wind controleren…', 'Vertrekvenster berekenen…']
 
 async function boot() {

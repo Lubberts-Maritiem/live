@@ -116,14 +116,7 @@ van/naar-matrix — dat waren de twee soorten fouten die eerder zijn misgegaan
   van "van".
 - **Opstartanimatie**: korte merkanimatie bij het laden van de pagina,
   gekoppeld aan de daadwerkelijke gereedheid van de eerste getij- en
-  winddata (met een vangnet-timeout van 4s).
-- **Getijgrafiek**: kleine curve bij het prominent getoonde vertrekmoment,
-  met een vast bereik van 12 uur vóór tot 12 uur ná het huidige moment (een
-  dunne "nu"-lijn staat altijd in het midden). Het geadviseerde vertrekmoment
-  blijft gemarkeerd; valt dat buiten die 24 uur, dan wordt de markering
-  simpelweg afgesneden door de grafiek. Toont de getijfase, geen letterlijke
-  waterstand, want daar heeft de RWS-databron geen cijfers voor — zie
-  PROJECT-OVERZICHT.md secties 11.1 en 13.2.
+  winddata (met een vangnet-timeout van 3s).
 - **Golfhoogte**: opgehaald bij de Open-Meteo Marine API, naast de wind per
   vertrekmoment en in het "Actueel weer & zon"-blok.
 - **Delen & agenda**: twee kleine knopjes bij het prominent getoonde
