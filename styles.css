@@ -71,11 +71,13 @@ body {
   gap: 1.1rem;
 }
 .boot-mark {
-  color: var(--brass-bright);
-  filter: drop-shadow(0 0 18px rgba(217, 168, 92, 0.4));
+  filter: drop-shadow(0 0 20px rgba(90, 140, 210, 0.45));
 }
-.boot-mark svg { animation: boot-bob 2.6s ease-in-out infinite; }
-.boot-wave { animation: boot-wave-flow 1.1s linear infinite; }
+.boot-mark img {
+  display: block;
+  border-radius: 50%;
+  animation: boot-bob 2.6s ease-in-out infinite;
+}
 .boot-brand {
   font-family: var(--font-display);
   font-weight: 600;
@@ -96,11 +98,8 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
-@keyframes boot-wave-flow {
-  to { stroke-dashoffset: -8; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .boot-mark svg, .boot-wave { animation: none; }
+  .boot-mark img { animation: none; }
 }
 
 .skip-link {
@@ -123,7 +122,8 @@ body {
   display: flex; align-items: flex-start; gap: 1.1rem;
   margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--line);
 }
-.header__mark { color: var(--brass-bright); flex-shrink: 0; margin-top: 0.3rem; }
+.header__mark { flex-shrink: 0; margin-top: 0.3rem; }
+.header__mark img { display: block; border-radius: 50%; }
 .header h1 {
   font-family: var(--font-display); font-weight: 600;
   font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 0 0 0.4rem; letter-spacing: -0.01em;
@@ -333,6 +333,7 @@ body {
 .tidechart__extreme { fill: var(--ink-deep); stroke: var(--brass-bright); stroke-width: 1; }
 .tidechart__venster { fill: rgba(217, 168, 92, 0.14); }
 .tidechart__vertreklijn { stroke: var(--brass-bright); stroke-width: 1.3; stroke-dasharray: 2 2; }
+.tidechart__nu { stroke: rgba(230, 236, 240, 0.55); stroke-width: 1; stroke-dasharray: 1 2; }
 
 /* Delen & agenda — klein en subtiel, alleen bij het prominent getoonde moment. */
 .result__actions {

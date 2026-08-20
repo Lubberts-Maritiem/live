@@ -13,7 +13,9 @@ getijdata van Rijkswaterstaat.
   instelbare drempelwaarden (wind, nacht).
 - **`app.js`** — de applicatielogica: dropdowns vullen, getij ophalen,
   vertrekvensters berekenen, wind/weer tonen.
-- **`favicon.svg`** — het paginaicoon.
+- **`logo.png`**, **`favicon.png`**, **`apple-touch-icon.png`** — het beeldmerk
+  in drie formaten (header/boot-animatie, paginaicoon, iOS/social-preview).
+  `favicon.svg` staat nog in de map maar wordt nergens meer naar verwezen.
 - **`api/getij.js`** — server-functie die getijdata ophaalt bij Rijkswaterstaat
   voor 12 referentiepunten. Verplicht: zonder dit bestand kan de site geen
   data laden, want de RWS-API staat geen rechtstreekse aanroepen vanuit de
@@ -46,7 +48,8 @@ Vercel straks live.
 2. Ga naar vercel.com/new en importeer die repository.
 3. Geen extra instellingen nodig — Vercel herkent automatisch dat `api/getij.js`
    een serverless function is en serveert `index.html`, `styles.css`, `app.js`,
-   `routes-data.js` en `favicon.svg` als statische bestanden.
+   `routes-data.js`, `logo.png`, `favicon.png` en `apple-touch-icon.png` als
+   statische bestanden.
 4. Na deployen krijg je een `.vercel.app`-adres dat meteen werkt.
 5. Koppel daarna het domein wadoversteken.nl via Vercel's domeininstellingen.
 
@@ -114,10 +117,13 @@ van/naar-matrix — dat waren de twee soorten fouten die eerder zijn misgegaan
 - **Opstartanimatie**: korte merkanimatie bij het laden van de pagina,
   gekoppeld aan de daadwerkelijke gereedheid van de eerste getij- en
   winddata (met een vangnet-timeout van 4s).
-- **Getijgrafiek**: kleine curve bij het prominent getoonde vertrekmoment die
-  de getijfase rond dat moment laat zien (geen letterlijke waterstand, want
-  daar heeft de RWS-databron geen cijfers voor — zie PROJECT-OVERZICHT.md
-  sectie 11.1).
+- **Getijgrafiek**: kleine curve bij het prominent getoonde vertrekmoment,
+  met een vast bereik van 12 uur vóór tot 12 uur ná het huidige moment (een
+  dunne "nu"-lijn staat altijd in het midden). Het geadviseerde vertrekmoment
+  blijft gemarkeerd; valt dat buiten die 24 uur, dan wordt de markering
+  simpelweg afgesneden door de grafiek. Toont de getijfase, geen letterlijke
+  waterstand, want daar heeft de RWS-databron geen cijfers voor — zie
+  PROJECT-OVERZICHT.md secties 11.1 en 13.2.
 - **Golfhoogte**: opgehaald bij de Open-Meteo Marine API, naast de wind per
   vertrekmoment en in het "Actueel weer & zon"-blok.
 - **Delen & agenda**: twee kleine knopjes bij het prominent getoonde

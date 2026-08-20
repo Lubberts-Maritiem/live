@@ -585,12 +585,19 @@ async function loadRoute(route, card, gekozenDatum) {
 // ---------------------------------------------------------------------------
 
 /**
- * Bouwt een kleine SVG-getijcurve rond een vertrekmoment. De curve is een
- * cosinus-interpolatie tussen opeenvolgende HW/LW-tijdstippen, genormaliseerd
- * naar 0 (laagwater) - 1 (hoogwater). Er zijn geen NAP-waarden beschikbaar —
- * de RWS-groepering GETETBRKD2 geeft alleen tijdstip + type terug — dus dit
- * toont de vorm/fase van het getij rond het vertrek, geen letterlijke
- * waterstand in centimeters.
+ * Bouwt een kleine SVG-getijcurve gecentreerd op het huidige moment: een
+ * vast bereik van 12 uur vóór tot 12 uur ná "nu" (dus altijd 24 uur breed,
+ * "nu" staat altijd precies in het midden — zie de dunne "nu"-lijn). De
+ * curve is een cosinus-interpolatie tussen opeenvolgende HW/LW-tijdstippen,
+ * genormaliseerd naar 0 (laagwater) - 1 (hoogwater). Er zijn geen
+ * NAP-waarden beschikbaar — de RWS-groepering GETETBRKD2 geeft alleen
+ * tijdstip + type terug — dus dit toont de vorm/fase van het getij, geen
+ * letterlijke waterstand in centimeters.
+ *
+ * Het geadviseerde vertrekmoment blijft gemarkeerd (band voor een venster,
+ * lijn voor een vast moment). Valt dat buiten de 24 uur rond nu, dan wordt
+ * de markering simpelweg door de SVG-viewbox afgesneden — dat is prima,
+ * "nu" is het vaste ankerpunt, niet het vertrekmoment.
  */
 function buildTideCurveSvg(extremen, departure) {
   if (!extremen || extremen.length < 2) return ''
@@ -599,24 +606,20 @@ function buildTideCurveSvg(extremen, departure) {
     .map((e) => ({ tijdstip: new Date(e.tijdstip), type: e.type }))
     .sort((a, b) => a.tijdstip - b.tijdstip)
 
-  const vertrekEind = departure.isWindow ? departure.vertrekEind : departure.vertrek
-  const marge = 3 * 3600000 // 3 uur speling aan weerszijden voor context
-  const vensterStart = new Date(Math.min(departure.vertrek.getTime(), departure.eventTime.getTime()) - marge)
-  const vensterEind = new Date(Math.max(vertrekEind.getTime(), departure.eventTime.getTime()) + marge)
+  const now = new Date()
+  const marge = 12 * 3600000 // vast bereik: 12 uur voor en na nu
+  const tMin = now.getTime() - marge
+  const tMax = now.getTime() + marge
 
-  let startIdx = sorted.findIndex((e) => e.tijdstip >= vensterStart)
+  let startIdx = sorted.findIndex((e) => e.tijdstip.getTime() >= tMin)
   if (startIdx === -1) startIdx = sorted.length - 1
   startIdx = Math.max(0, startIdx - 1)
   let endIdx = sorted.length - 1
   for (let i = startIdx; i < sorted.length; i++) {
-    if (sorted[i].tijdstip > vensterEind) { endIdx = i; break }
+    if (sorted[i].tijdstip.getTime() > tMax) { endIdx = i; break }
   }
   const punten = sorted.slice(startIdx, endIdx + 1)
   if (punten.length < 2) return ''
-
-  const tMin = punten[0].tijdstip.getTime()
-  const tMax = punten[punten.length - 1].tijdstip.getTime()
-  if (tMax === tMin) return ''
 
   const W = 300, H = 56, padX = 3, padTop = 6, padBottom = 6
   const xFor = (t) => padX + ((t - tMin) / (tMax - tMin)) * (W - 2 * padX)
@@ -654,6 +657,9 @@ function buildTideCurveSvg(extremen, departure) {
   }).join('')
 
   // Vertrekmarkering: een band voor een venster, een lijn voor een vast moment.
+  // Valt buiten [tMin, tMax], dan tekent xFor() een coördinaat buiten de
+  // viewBox en wordt de markering automatisch afgesneden (preserveAspectRatio
+  // + geen overflow) — geen aparte gevallen nodig.
   let vertrekMarker
   if (departure.isWindow) {
     const x0 = xFor(departure.vertrek.getTime())
@@ -664,12 +670,18 @@ function buildTideCurveSvg(extremen, departure) {
     vertrekMarker = `<line x1="${x.toFixed(1)}" y1="${padTop}" x2="${x.toFixed(1)}" y2="${(H - padBottom).toFixed(1)}" class="tidechart__vertreklijn" />`
   }
 
+  // "Nu"-lijn: staat per constructie altijd precies op de horizontale
+  // middenas (xFor(now) === W / 2), dus geen aparte berekening nodig.
+  const xNu = (W / 2).toFixed(1)
+  const nuMarker = `<line x1="${xNu}" y1="${padTop}" x2="${xNu}" y2="${(H - padBottom).toFixed(1)}" class="tidechart__nu" />`
+
   return `
-    <svg class="result__tidechart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Getijverloop rond het vertrekmoment">
+    <svg class="result__tidechart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Getijverloop van 12 uur voor tot 12 uur na nu, met het vertrekmoment gemarkeerd">
       <path d="${vlakD}" class="tidechart__vlak" />
       ${vertrekMarker}
       <path d="${pathD}" fill="none" class="tidechart__lijn" />
       ${markers}
+      ${nuMarker}
     </svg>
   `
 }

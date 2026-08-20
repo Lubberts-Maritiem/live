@@ -31,7 +31,8 @@ wadoversteken-github/
 ├── styles.css            ← alle vormgeving
 ├── routes-data.js        ← ROUTES (67), referentiepunten, coördinaten, drempelwaarden
 ├── app.js                 ← applicatielogica
-├── favicon.svg            ← paginaicoon
+├── logo.png, favicon.png, ← beeldmerk (header/boot, paginaicoon, iOS/social)
+│   apple-touch-icon.png     (favicon.svg staat er nog, maar is ongebruikt — sectie 13)
 ├── api/getij.js          ← Vercel serverless function (Node), proxyt Rijkswaterstaat
 ├── devserver.mjs         ← lokale ontwikkelserver (speelt de Vercel-function na,
 │                            serveert nu ook de statische .css/.js/.svg-bestanden)
@@ -688,8 +689,167 @@ getijgrafiek).
 
 ---
 
+## 12. Wantijen-uitleg (vervolgsessie, zelfde dag)
+
+De gebruiker uploadde twee documenten en vroeg of ze bruikbaar waren voor de
+site: `Wantijen Waddenzee.docx` en `Wadvaarders_dieptestaat.xlsx`.
+
+### 12.1 Wat erin zat
+
+- **`Wantijen Waddenzee.docx`** (gelezen via `pandoc -t markdown`):
+  achtergrondtekst over wantijen (de ondiepe drempel achter elk eiland waar
+  twee stroomstelsels elkaar ontmoeten), met de 7 hoofdwantijen tussen Den
+  Helder en Delfzijl, "De Gouden Regel" (1-1,5 uur vóór hoogwater op het
+  hoogste punt zijn, nooit erna passeren), het effect van wind op de
+  waterstand (oostenwind kan een wantij 30-50 cm extra laten droogvallen),
+  en verwijzingen naar de Nautin Wadvaarders-dieptestaat en de Quicktide-app
+  voor actuele dieptes. Bevestigt inhoudelijk de vaste-offset-aanpak die de
+  site al gebruikt, geen nieuwe rekenlogica.
+- **`Wadvaarders_dieptestaat.xlsx`** (gelezen via `openpyxl`, 3 tabbladen):
+  een **actief bijgehouden dieptestaat** (bijgewerkt tot 11-08-2026, dus
+  enkele dagen voor deze sessie) met minst gelode dieptes (t.o.v. ALAT en
+  NAP) en peildatum voor ~35 met naam genoemde vaargeulen/wantijen, plus een
+  blad dat via de twaalfdenregel (1/12e-regel) de verwachte diepte per uur
+  rond HW/LW berekent voor spring- en doodtij. Geen API — een handmatig
+  bijgehouden spreadsheet, dus alleen bruikbaar als momentopname, niet als
+  live bron.
+- **Cross-check tegen `routes-data.js`**: de vaargeulnamen in de dieptestaat
+  overlappen direct met bestaande `via`-velden: Boontjes, Inschot,
+  Kimstergat, Scheurrak, Schuitengat, Zuidoostrak, Molengat. Er wás dus een
+  concrete koppelmogelijkheid, mocht dit later alsnog gewenst zijn.
+
+### 12.2 Gemaakte keuze
+
+Voorgelegd aan de gebruiker met 4 opties (statische diepte-snapshot per
+route, dynamische twaalfdenregel-berekening op het vertrekmoment, beide
+gefaseerd, of alleen de uitleg). **Gekozen: alleen de wantijen-uitleg**,
+geen cijfers uit de dieptestaat verwerkt. De xlsx-data is dus (nog) niet in
+de site beland; deze sectie documenteert wat erin zit voor het geval dit
+later alsnog gewenst is (zie 12.3).
+
+### 12.3 Toegevoegd aan de site
+
+Nieuwe sectie `.wantijen` in `index.html`, tussen het meteo-blok en de
+footer, qua ritme/styling een kopie van het meteo-blok (`h2` in
+`--font-display`, body-tekst gedempt). Bevat, in eigen bewoording
+samengevat (niet 1-op-1 gekopieerd uit het Word-document): wat een wantij
+is, de zeven wantijen tussen Den Helder en Delfzijl, De Gouden Regel als
+uitgelichte alinea (`.wantijen__regel`, brass-accent-linkerrand, zelfde
+kleurtaal als de rest van de site), en de windwaarschuwing met een
+verwijzing naar de Wadvaarders-dieptestaat/QuickTide voor actuele dieptes.
+Statische tekst, geen nieuwe JS-logica of databron nodig.
+
+**Verificatie**: `styles.css`-accolades gebalanceerd, sectie aanwezig in de
+HTML-output van `devserver.mjs`, "Gouden Regel" vindbaar in de gerenderde
+pagina via curl.
+
+### 12.4 Nog open
+
+- De dieptestaat-cijfers zelf (minst gelode diepte + peildatum, en/of de
+  twaalfdenregel-berekening) staan nog niet in de site — zie 12.1/12.2 voor
+  de aanpak als dit alsnog wordt opgepakt. Belangrijk aandachtspunt dan: dit
+  is een handmatige spreadsheet-snapshot, dus zou periodiek opnieuw
+  aangeleverd moeten worden door de gebruiker (geen live API beschikbaar).
+
+---
+
+## 13. Logo/favicon-vervanging en getijgrafiek gecentreerd op "nu" (vervolgsessie, zelfde dag)
+
+De gebruiker uploadde een nieuw beeldmerk (cirkelvormig, marineblauw, met
+zeilboot, vuurtoren en golven) met twee verzoeken: (1) dit overal als logo en
+favicon gebruiken, en (2) de getijgrafiek herzien zodat die niet meer om het
+vertrekmoment draait, maar om het huidige moment, met een vast bereik van
+12 uur ervoor tot 12 uur erna.
+
+### 13.1 Logo en favicon
+
+Uit de geüploade afbeelding (1254×1254 PNG, transparante hoeken, ondoorzichtige
+cirkel) zijn met PIL/Pillow (LANCZOS-resampling) drie varianten gegenereerd:
+
+- `logo.png` (256×256) — gebruikt in de boot-overlay en de header.
+- `favicon.png` (64×64) — het paginaicoon.
+- `apple-touch-icon.png` (180×180) — voor iOS/homescreen én hergebruikt als
+  `og:image`/`twitter:image` (social-media voorvertoning).
+
+In `index.html`: de `<link rel="icon">` wijst nu naar `favicon.png` (was
+`favicon.svg`), er is een `apple-touch-icon`-link bijgekomen, en er zijn
+`og:image`/`twitter:image`-metatags toegevoegd. De inline wave/mast-SVG's in
+zowel `.boot-mark` (boot-overlay) als `.header__mark` (header) zijn vervangen
+door `<img src="logo.png">`.
+
+In `styles.css`: de SVG-specifieke styling (`color: var(--brass-bright)` voor
+het invullen van de inline-SVG, de `.boot-wave`-animatie met bijbehorende
+`@keyframes boot-wave-flow`) is verwijderd omdat een PNG geen `currentColor`
+kent en geen los golf-element meer heeft. Daarvoor in de plaats: de
+bob-animatie (`boot-bob`) is verplaatst naar de `img`-selector, `border-radius:
+50%` zorgt dat de vierkante PNG rond oogt zoals in de header, en de
+drop-shadow-kleur is aangepast naar een blauwtint die bij het nieuwe logo past.
+De oude `favicon.svg` staat nog in de repo maar wordt nergens meer naar
+verwezen — bewust niet verwijderd (verwijderen van bestanden in de
+gebruikersmap vereist expliciete toestemming), desgewenst later opruimen.
+
+**Verificatie**: `devserver.mjs` miste een content-type voor `.png` (had alleen
+`.html`/`.css`/`.js`/`.svg`/`.json`) — toegevoegd (`.png`, `.jpg`/`.jpeg`,
+`.ico`). Daarna via `node devserver.mjs` + curl bevestigd: `logo.png`,
+`favicon.png` en `apple-touch-icon.png` geven alle drie `200 image/png`, en de
+drie bestandsnamen komen terug in de gerenderde `index.html`.
+
+### 13.2 Getijgrafiek: vast venster van 24 uur rond "nu"
+
+**Voor**: het venster van de grafiek (`buildTideCurveSvg` in `app.js`) werd
+afgeleid van het vertrekmoment zelf — vertrek/event ±3 uur marge. Bij een
+vertrek ver in de toekomst verschoof het hele venster mee; "nu" kwam nergens
+in de grafiek terug.
+
+**Na**: het venster is een vaste `[nu − 12u, nu + 12u]`-periode, ongeacht waar
+het vertrekmoment valt. Omdat `xFor()` het venster lineair op de breedte van
+de SVG afbeeldt, staat "nu" daardoor per constructie altijd exact op de
+horizontale middenas (`x = W / 2`) — geen aparte berekening nodig, alleen een
+duidelijkheids-comment in de code. Er is een nieuwe, subtiele "nu"-lijn
+toegevoegd (stippellijn, gedempte kleur, class `.tidechart__nu` in
+`styles.css`) zodat je in één oogopslag ziet waar je nu staat t.o.v. het
+getij.
+
+De bestaande vertrekmarkering (band voor een venster-advies, lijn voor een
+vast moment) is ongewijzigd gebleven. Valt het vertrekmoment buiten de zichtbare
+24 uur (bijv. "specifieke datum"-modus met een datum ver vooruit), dan valt de
+berekende x-coördinaat buiten de `viewBox` (0–300) en wordt de markering
+automatisch afgesneden door de SVG zelf — geen speciale if-tak nodig, en geen
+crash. De aria-label van de grafiek is aangepast naar "Getijverloop van 12 uur
+voor tot 12 uur na nu, met het vertrekmoment gemarkeerd".
+
+**Verificatie**: `buildTideCurveSvg` is (net als bij eerdere sessies)
+geïsoleerd uit `app.js` via accolade-matching en getest in een losse
+Node-context tegen live RWS-data voor Texel (opgehaald via de lokale
+`devserver.mjs`-proxy). Getest en bevestigd:
+- de "nu"-lijn staat in elk scenario exact op `x = 150.0` (het midden);
+- een vertrekmoment 2 uur in de toekomst (binnen bereik) geeft een zichtbare
+  vertreklijn tussen 0 en 300;
+- een venster-advies (`isWindow: true`) binnen bereik geeft de venster-band;
+- een vertrekmoment 20 uur in de toekomst geeft een vertreklijn op `x ≈ 395`
+  (buiten de viewBox, dus onzichtbaar/afgesneden, zoals bedoeld);
+- een vertrekmoment 20 uur in het verleden geeft `x ≈ −95` (zelfde
+  clip-gedrag aan de andere kant);
+- lege of ontbrekende getijdata (`[]`/`null`) geeft nog steeds een lege string
+  terug, geen crash.
+`node -c app.js` en `node -c devserver.mjs` zijn foutloos.
+
+### 13.3 Nog open
+
+- `favicon.svg` is orphaned (niet meer gebruikt, niet verwijderd) — pas
+  verwijderen na expliciete toestemming van de gebruiker.
+- README.md is bijgewerkt (zie feature-beschrijving getijgrafiek), maar
+  bevat nog een verwijzing naar `favicon.svg` als paginaicoon in het
+  bestandsoverzicht — zie sectie 9 van dit document voor de bestandenlijst,
+  die eveneens nog `favicon.svg` noemt in plaats van de nieuwe PNG-set.
+
+---
+
 *Dit document is gegenereerd als hand-off tussen werksessies. De huidige
 bestanden dekken alle features t/m punt 12 in sectie 5, plus de boot-overlay
-(sectie 10) en de getijgrafiek/golfhoogte/deel-agendaknop (sectie 11), maar
-nog geen route-kaart (sectie 6, "Route-kaart" is de eerstvolgende openstaande
-taak).*
+(sectie 10), de getijgrafiek/golfhoogte/deel-agendaknop (sectie 11), de
+wantijen-uitleg (sectie 12), en de logo/favicon-vervanging plus de
+"nu"-gecentreerde getijgrafiek (sectie 13), maar nog geen route-kaart
+(sectie 6, "Route-kaart" is de eerstvolgende openstaande taak), nog geen
+dieptestaat-data (sectie 12.4), en `favicon.svg` staat nog ongebruikt in de
+repo (sectie 13.3).*
