@@ -174,17 +174,30 @@ function vertaalAuthError(error) {
 // ---------------------------------------------------------------------------
 
 if (accountForm) {
+  console.log('[wadoversteken] inlogformulier gevonden, listener wordt gekoppeld')
+
   accountForm.addEventListener('submit', async (e) => {
+    console.log('[wadoversteken] submit-event ontvangen')
     e.preventDefault()
-    if (!supabaseClient) return
+
+    if (!supabaseClient) {
+      console.warn('[wadoversteken] geen supabaseClient — SUPABASE_READY was false bij het laden van de pagina')
+      return
+    }
+
     setAccountError('')
     const email = accountEmail.value.trim()
     const password = accountPassword.value
-    if (!email || !password) return
+    console.log('[wadoversteken] inlogpoging voor', email, '(wachtwoordlengte:', password.length, ')')
+    if (!email || !password) {
+      console.warn('[wadoversteken] e-mail of wachtwoord leeg, stop hier')
+      return
+    }
 
     setBusy(true)
     try {
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password })
+      console.log('[wadoversteken] antwoord van Supabase ontvangen — fout:', error, '| sessie aanwezig:', Boolean(data && data.session))
       if (error) { setAccountError(vertaalAuthError(error)); return }
       accountPassword.value = ''
     } catch (err) {
@@ -192,12 +205,14 @@ if (accountForm) {
       // onverwachte reactie van Supabase) in plaats van netjes een
       // { error }-object terug te geven, bleef de knop hiervoor stil
       // uitgeschakeld staan zonder enige melding. Dit vangt dat op.
-      console.error('Inloggen mislukt met een onverwachte fout:', err)
+      console.error('[wadoversteken] inloggen mislukt met een onverwachte fout:', err)
       setAccountError('Inloggen lukte niet door een technisch probleem. Probeer het opnieuw, of kijk in de browserconsole (F12) voor details.')
     } finally {
       setBusy(false)
     }
   })
+} else {
+  console.warn('[wadoversteken] geen element met id="account-form" gevonden in de pagina')
 }
 
 if (accountLogoutBtn) {
@@ -353,6 +368,7 @@ async function toggleFavorite(route, departure, btn) {
 // ---------------------------------------------------------------------------
 
 function handleSession(session) {
+  console.log('[wadoversteken] auth-status gewijzigd — ingelogd:', Boolean(session), session ? session.user.email : null)
   currentUser = session ? session.user : null
   renderAccountUI()
 
