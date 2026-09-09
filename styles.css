@@ -691,6 +691,13 @@ body {
     radial-gradient(ellipse 900px 500px at 15% -10%, rgba(61, 107, 111, 0.35), transparent),
     var(--ink-deep);
 }
+/* Zonder deze regel wint de eigen "display: flex" hierboven het van het
+   hidden-attribuut (auth.js zet loginGate.hidden = true zodra iemand is
+   ingelogd) — het scherm bleef dan zichtbaar staan, ook als je al was
+   ingelogd. [hidden] moet hier expliciet voorrang krijgen. */
+.login-gate[hidden] {
+  display: none;
+}
 .login-gate__card {
   width: min(360px, 100%);
   background: linear-gradient(165deg, rgba(238, 242, 239, 0.05), rgba(238, 242, 239, 0.02));
