@@ -538,3 +538,139 @@ body {
   .meteo { font-size: 0.8rem; }
   .meteo__grid { gap: 1rem 1.25rem; }
 }
+
+/* ---------------------------------------------------------------------------
+   Account & favorieten (sep. 2026) — zelfde ritme/kleuren als de rest van
+   de site (donker, koper accent, mono voor tijden).
+   --------------------------------------------------------------------- */
+
+.account {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+  position: relative;
+}
+.account__toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: rgba(238, 242, 239, 0.75);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.account__toggle:hover { border-color: var(--brass); color: var(--brass-bright); }
+
+.account__panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 20;
+  width: min(300px, 90vw);
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.account__status {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(238, 242, 239, 0.6);
+}
+.account__form { display: flex; flex-direction: column; gap: 0.65rem; }
+.account__field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.78rem; color: rgba(238, 242, 239, 0.5); }
+.account__field input {
+  background: var(--field-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 0.5rem 0.6rem;
+  color-scheme: dark;
+}
+.account__field input:focus { border-color: var(--brass); }
+.account__error { margin: 0; font-size: 0.8rem; color: var(--error); }
+.account__actions { display: flex; gap: 0.5rem; }
+.account__submit {
+  flex: 1;
+  border: 1px solid var(--brass);
+  background: var(--brass);
+  color: var(--ink-deep);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.account__submit:hover { background: var(--brass-bright); border-color: var(--brass-bright); }
+.account__submit--ghost { background: transparent; color: var(--brass-bright); }
+.account__submit--ghost:hover { background: rgba(217, 168, 92, 0.1); }
+.account__submit:disabled,
+.account__field input:disabled { opacity: 0.5; cursor: not-allowed; }
+.account__logout {
+  width: 100%;
+  margin-top: 0.25rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: rgba(238, 242, 239, 0.65);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.account__logout:hover { border-color: var(--error); color: var(--error); }
+
+/* Favorieten */
+.favorites {
+  margin-top: 2rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(165deg, rgba(238, 242, 239, 0.04), rgba(238, 242, 239, 0.015));
+}
+.favorites h2 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 0 0 0.9rem;
+  color: rgba(238, 242, 239, 0.85);
+}
+.favorites__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.favorites__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.favorites__route { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.88rem; }
+.favorites__time { font-family: var(--font-mono); font-size: 0.8rem; color: rgba(238, 242, 239, 0.55); }
+.favorites__remove {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: rgba(238, 242, 239, 0.5);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.favorites__remove:hover { border-color: var(--error); color: var(--error); }
+.favorites__empty { margin: 0; font-size: 0.85rem; color: rgba(238, 242, 239, 0.45); }
+
+.result__action--fav-active { border-color: var(--brass); color: var(--brass-bright); }
+
+@media (max-width: 480px) {
+  .account { justify-content: center; }
+  .account__panel { left: 0; right: 0; margin: 0 auto; }
+}
