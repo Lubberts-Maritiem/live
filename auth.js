@@ -183,11 +183,20 @@ if (accountForm) {
     if (!email || !password) return
 
     setBusy(true)
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password })
-    setBusy(false)
-
-    if (error) { setAccountError(vertaalAuthError(error)); return }
-    accountPassword.value = ''
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password })
+      if (error) { setAccountError(vertaalAuthError(error)); return }
+      accountPassword.value = ''
+    } catch (err) {
+      // Als signInWithPassword zelf een fout gooit (netwerk, CORS, een
+      // onverwachte reactie van Supabase) in plaats van netjes een
+      // { error }-object terug te geven, bleef de knop hiervoor stil
+      // uitgeschakeld staan zonder enige melding. Dit vangt dat op.
+      console.error('Inloggen mislukt met een onverwachte fout:', err)
+      setAccountError('Inloggen lukte niet door een technisch probleem. Probeer het opnieuw, of kijk in de browserconsole (F12) voor details.')
+    } finally {
+      setBusy(false)
+    }
   })
 }
 
