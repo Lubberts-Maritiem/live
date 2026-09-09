@@ -278,12 +278,18 @@ soorten fouten die eerder zijn misgegaan.
 12. **Code opgesplitst in bestanden, a11y- en visuele polish, +11 routes**
     (aug. 2026) — zie sectie 9 voor de volledige toelichting.
 
+13. **Account & favorieten (Supabase)** (sep. 2026) — gebruikers kunnen een
+    account aanmaken en vertrekmomenten bewaren als favoriet. Zie sectie 15
+    voor de volledige toelichting en de nog openstaande installatiestap.
+
 ### Bewust NIET gebouwd
 - **E-mailherinnering** (kies vooraf hoe lang van tevoren, site mailt
   automatisch): besproken en technisch uitgezocht (zie sectie 6), maar de
   gebruiker koos expliciet om dit voor nu weg te laten — vereist een
   database (Vercel KV/Upstash) én een mailservice-account (bijv. Resend),
-  beide nieuwe registraties die de gebruiker nu niet wilde doen.
+  beide nieuwe registraties die de gebruiker nu niet wilde doen. Met de
+  komst van Supabase (sectie 15) staat de database-stap er inmiddels al,
+  zie 15.3.
 
 ---
 
@@ -920,12 +926,216 @@ hierboven zijn bijgewerkt.
 
 ---
 
+## 15. Accounts & favorieten (vervolgsessie, sep. 2026)
+
+De gebruiker vroeg om een account-functie waarmee bezoekers vertrekmomenten
+(route + tijdstip) kunnen bewaren als favoriet. De rest van de eerder
+besproken account-gerelateerde ideeën (profiel, wachtwoord-reset e.d.) is
+expliciet uitgesteld naar later.
+
+### 15.1 Architectuurkeuze
+
+De site blijft een statische site zonder build-stap (zie sectie 1) — dat
+uitgangspunt is niet losgelaten. Voor accounts + een database was een
+externe partij nodig, want Vercel zelf biedt geen ingebouwde database of
+auth. Gekozen: **Supabase** (gratis tier), om drie redenen:
+
+1. **Geen build-stap nodig** — de `supabase-js`-library wordt via een
+   CDN-`<script>`-tag geladen, precies zoals de rest van de site werkt.
+2. **Auth zit er al in** — registreren, inloggen, sessies, e-mailbevestiging;
+   hoefde niet zelf gebouwd te worden (wachtwoord-hashing, tokens, etc.).
+3. **Beveiliging via Row Level Security (RLS)** in plaats van een eigen
+   serverless function: de favorieten-tabel heeft policies die garanderen
+   dat een gebruiker alleen zijn eigen rijen kan lezen/schrijven/verwijderen.
+   De publieke ("anon") sleutel mag dus gewoon zichtbaar in de browser staan
+   — dat is hoe Supabase is ontworpen.
+
+Overwogen alternatief: een eigen `api/`-serverless function (zoals
+`getij.js`) plus een losse database (bijv. Vercel Postgres) en zelf
+wachtwoord-hashing/sessies bouwen. Dat blijft mogelijk als de gebruiker ooit
+van Supabase af wil, maar is voor dit doel meer bouw- en onderhoudswerk
+zonder duidelijk voordeel.
+
+### 15.2 Wat is gebouwd
+
+- **`supabase-config.js`** (nieuw) — bevat `SUPABASE_URL` en
+  `SUPABASE_ANON_KEY`. Staat standaard op placeholder-waarden; de gebruiker
+  moet deze zelf invullen na het aanmaken van een Supabase-project (zie
+  README.md, "Account & favorieten instellen"). Zolang dat niet is gebeurd,
+  blijft de rest van de site gewoon werken — alleen de account-knop is dan
+  inactief (`SUPABASE_READY`-check in `auth.js`).
+- **`auth.js`** (nieuw) — alle account- en favorieten-logica: in-/uitloggen,
+  registreren, sessiebeheer via `supabase.auth.onAuthStateChange`,
+  favorieten laden/opslaan/verwijderen, en de ster-knop bij elk
+  vertrekmoment. Exporteert `window.Favorites` (`buildButtonHtml`,
+  `toggle`, `refreshButtons`) zodat `app.js` er los van blijft en op
+  dezelfde manier globals deelt als `routes-data.js` dat al deed.
+- **`supabase-schema.sql`** (nieuw) — eenmalig uit te voeren SQL: tabel
+  `favorites` (route, van/naar, advies, vertrek + evt. vertrek-eind,
+  event-type) met RLS-policies voor select/insert/delete, allemaal
+  `auth.uid() = user_id`.
+- **`index.html`** — account-knop rechtsboven op de pagina (met een
+  in-/uitklapbaar paneel om in te loggen of te registreren), en een "Mijn
+  favorieten"-sectie die verschijnt zodra iemand is ingelogd. Nieuwe
+  `<script>`-tags voor `supabase-config.js`, de Supabase-CDN-library en
+  `auth.js`, geladen vóór `app.js`.
+- **`app.js`** — `buildActionsHtml()` roept nu ook
+  `window.Favorites.buildButtonHtml()` aan zodat de ster-knop naast de
+  bestaande deel-/agendaknoppen verschijnt bij het prominent getoonde
+  vertrekmoment; de gedelegeerde click-handler op `#result` is uitgebreid
+  met een `favorite`-actie.
+- **`styles.css`** — nieuwe stijlen voor het account-paneel en de
+  favorieten-lijst, in dezelfde stijl (kleuren/typografie) als de rest van
+  de site.
+
+Een favoriet wordt geïdentificeerd op `route_id` + exact `vertrek`-tijdstip
+(niet alleen de route), dus twee verschillende vertrekmomenten van dezelfde
+route kunnen allebei apart bewaard worden.
+
+### 15.3 Nog open
+
+- De gebruiker moet zelf nog eenmalig een Supabase-project aanmaken, de SQL
+  uitvoeren en de sleutels in `supabase-config.js` invullen — zie README.md.
+  Zonder die stap is de accountfunctie zichtbaar maar inactief.
+- Wachtwoord-vergeten-flow is niet gebouwd (Supabase ondersteunt dit
+  kant-en-klaar via `resetPasswordForEmail`, maar is nu bewust weggelaten).
+- Geen profielpagina of andere accountgegevens dan e-mailadres.
+- De eerder onderzochte **e-mailherinnering** (sectie 6) wordt door deze
+  wijziging eenvoudiger: er is nu al een gebruikersdatabase (Supabase)
+  waar een reminder-tijdstip per gebruiker in zou kunnen, in plaats van een
+  aparte Vercel KV/Upstash-registratie zoals eerder bedacht. Blijft, net als
+  voorheen, een aparte beslissing voor een volgende sessie.
+- Geen automatische tests; handmatig geverifieerd zoals in 15.4.
+
+### 15.4 Verificatie
+
+- `node --check` op `app.js` en `auth.js`: geen syntaxfouten.
+- Lokaal `devserver.mjs` gestart en gecontroleerd dat `index.html`,
+  `auth.js` en `supabase-config.js` allemaal met status 200 laden, en dat
+  de nieuwe markup (`account-panel`, `favorites-section`) in de HTML
+  terechtkomt.
+- Alle `getElementById`-verwijzingen in `auth.js` gecontroleerd tegen de
+  bijbehorende `id`-attributen in `index.html`: elk precies één keer
+  aanwezig.
+- Nog te doen door de gebruiker zelf (kan niet zonder een echt
+  Supabase-project): een account aanmaken, inloggen, een favoriet
+  toevoegen/verwijderen bij een vertrekmoment, pagina verversen en
+  controleren dat de favoriet blijft staan.
+
+---
+
+## 16. Inlogverplichting + uitnodiging-only (vervolgsessie, sep. 2026)
+
+De gebruiker wilde de site alleen nog toegankelijk maken na inloggen, en
+koos voor "uitnodiging-only": geen open registratie meer, de gebruiker
+voegt zelf mensen toe via het Supabase-dashboard.
+
+### 16.1 Gemaakte keuze: interface-poort + server-check, geen Vercel Middleware
+
+Voorgelegd aan de gebruiker (en akkoord op gekregen): een volledige
+serverkant-vergrendeling via Vercel Middleware (die zelfs de statische
+bestanden blokkeert voor niet-ingelogde bezoekers) zou een grote ombouw
+vragen die haaks staat op het "statische site zonder build-stap"-
+uitgangspunt uit sectie 1. Gekozen is voor een lichtere aanpak die daar
+wel binnen past:
+
+1. **Interface-poort** (`index.html`/`auth.js`): niemand ziet de
+   inhoud zonder in te loggen, alleen een inlogscherm.
+2. **Server-side check op de enige echte databron** (`api/getij.js`):
+   verifieert het meegestuurde token bij Supabase zelf, zodat ook wie de
+   API rechtstreeks aanroept (buiten de site om) zonder account niets
+   krijgt.
+
+Eerlijke kanttekening, ook met de gebruiker gedeeld: de HTML/CSS/JS-
+bestanden zelf blijven techisch op te vragen voor wie er specifiek naar
+zoekt (bijv. "bekijk paginabron"). Daar staat niets gevoeligs in, alleen
+lay-out en de vaste routetekst die toch al publiek is bij Waddenhavens.nl.
+De actuele, waardevolle data (live getij) is met de servercheck wel echt
+afgeschermd.
+
+### 16.2 Wat is gebouwd
+
+- **`index.html`** — nieuwe `<div id="login-gate">`, een gecentreerde kaart
+  met het inlogformulier (verplaatst uit het oude paneeltje rechtsboven).
+  Geen registratieknop meer. De bestaande `<div class="page">` heeft er
+  `id="app-content"` bij gekregen en start met `hidden`; het kleine
+  account-paneeltje rechtsboven toont nu alleen nog "Ingelogd als …" en een
+  uitlogknop, geen formulier.
+- **`auth.js`** — grotendeels herschreven rond een simpele poort:
+  `handleSession()` bepaalt op elke auth-wijziging of `showApp()` of
+  `showGate()` moet draaien. `showApp()` roept één keer per sessie
+  `window.startApp()` aan (zie hieronder) via een `appStarted`-vlag, zodat
+  een stille token-refresh niet steeds opnieuw getij/wind ophaalt. Als
+  `SUPABASE_READY` false is (configuratie nog niet ingevuld), wordt het
+  formulier op slot gezet en blijft het inlogscherm permanent zichtbaar
+  ("fail closed" in plaats van "fail open"). Exporteert nu ook
+  `window.Auth.getAccessToken()`.
+- **`app.js`** — `boot()` (haalt getij/wind op) wordt niet meer automatisch
+  aangeroepen bij het laden van de pagina, maar toegewezen aan
+  `window.startApp`; `auth.js` beslist wanneer dat mag. De fetch naar
+  `/api/getij` stuurt nu een `Authorization: Bearer <token>`-header mee,
+  opgehaald via `window.Auth.getAccessToken()`.
+- **`api/getij.js`** — nieuwe `verifySupabaseUser()`-functie die het
+  token controleert bij `GET {SUPABASE_URL}/auth/v1/user`. Zonder geldig
+  token: HTTP 401 met een duidelijke foutmelding, in hetzelfde
+  `{ error: ... }`-formaat dat de frontend al afhandelde, dus geen
+  aanpassing nodig aan hoe `app.js` foutmeldingen toont. Bevat dezelfde
+  `SUPABASE_URL`/sleutel als `supabase-config.js`, met een commentaarregel
+  dat ze gelijk moeten blijven (bewuste keuze: geen environment variables
+  toegevoegd, dit project gebruikte die nog nergens en de sleutel is
+  toch al publiek/client-veilig).
+- **`devserver.mjs`** — geeft nu ook de binnenkomende `headers` door aan de
+  nagebootste `/api/getij`-aanroep, anders zou de auth-check lokaal altijd
+  falen (de oude nepversie van `req` had geen `headers`).
+- **`styles.css`** — nieuwe `.login-gate`-stijlen (volledige-pagina kaart,
+  zelfde donkere stijl); `.account__submit--ghost` verwijderd (hoorde bij
+  de nu verwijderde registratieknop).
+- **Back-up**: volledige kopie van alle bestanden van vlak vóór deze
+  wijziging in `backup-2026-09-09-voor-inlogverplichting/` (inclusief
+  `api/getij.js` en een `LEES-MIJ.txt` met terugzet-instructies), op
+  uitdrukkelijk verzoek van de gebruiker.
+
+### 16.3 Nog open
+
+- Geen wachtwoord-vergeten-flow; de gebruiker (beheerder) zet zelf een
+  nieuw wachtwoord via het Supabase-dashboard als iemand dat nodig heeft.
+- De HTML/CSS/JS-bestanden zelf zijn, zoals hierboven toegelicht, geen
+  hard technisch geheim — alleen de live getijdata is echt afgeschermd.
+  Zie 16.1 als dit ooit alsnog helemaal dicht moet (Vercel Middleware).
+- Elke route-kaart op de pagina doet zijn eigen tokencheck bij Supabase
+  (geen gedeelde cache binnen één paginabezoek); bij veel routes tegelijk
+  zijn dat een paar extra, kleine round-trips. Voor dit aantal gebruikers
+  geen probleem, maar een mogelijke optimalisatie later.
+
+### 16.4 Verificatie
+
+- `node --check` op `app.js`, `auth.js`, `api/getij.js` en `devserver.mjs`:
+  geen syntaxfouten.
+- Lokaal `devserver.mjs` gestart en getest: `/api/getij` zonder
+  Authorization-header geeft 401; met een ongeldig token ook 401; de
+  statische bestanden (`index.html`, `app.js`, `auth.js`, `styles.css`)
+  laden allemaal met status 200 en bevatten de nieuwe `login-gate`/
+  `app-content`-markup.
+- Alle `getElementById`-verwijzingen in `auth.js` gecontroleerd tegen de
+  bijbehorende `id`-attributen in `index.html`: elk precies één keer
+  aanwezig, geen loshangende verwijzingen naar de verwijderde
+  registratieknop.
+- Niet getest (kan niet zonder een echte, bevestigde gebruiker): de
+  volledige inlog-tot-en-met-getijdata-ophalen-flow met een geldig token.
+  De gebruiker kan dit zelf verifiëren door via het Supabase-dashboard een
+  testgebruiker aan te maken (met "Auto Confirm User") en daarmee in te
+  loggen op de site.
+
+---
+
 *Dit document is gegenereerd als hand-off tussen werksessies. De huidige
-bestanden dekken alle features t/m punt 12 in sectie 5 (m.u.v. de
+bestanden dekken alle features t/m punt 13 in sectie 5 (m.u.v. de
 getijgrafiek, die in sectie 14.2 weer is verwijderd), plus de boot-overlay
 (sectie 10, timeout verkort in 14.3), golfhoogte en de deel-/agendaknop
-(sectie 11), de wantijen-uitleg (sectie 12), en het huidige logo/favicon
-(sectie 13, herzien in 14.1), maar nog geen route-kaart (sectie 6,
-"Route-kaart" is de eerstvolgende openstaande taak), nog geen
-dieptestaat-data (sectie 12.4), en `favicon.svg` staat nog ongebruikt in de
-repo (sectie 13.3/14.4).*
+(sectie 11), de wantijen-uitleg (sectie 12), het huidige logo/favicon
+(sectie 13, herzien in 14.1), accounts/favorieten via Supabase (sectie 15),
+en de inlogverplichting met uitnodiging-only registratie (sectie 16). Nog
+niet gebouwd: een route-kaart (sectie 6), dieptestaat-data (sectie 12.4),
+een wachtwoord-vergeten-flow (sectie 16.3), en `favicon.svg` staat nog
+ongebruikt in de repo (sectie 13.3/14.4). Een volledige back-up van vóór
+de inlogverplichting staat in `backup-2026-09-09-voor-inlogverplichting/`.*

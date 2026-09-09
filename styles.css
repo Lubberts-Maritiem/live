@@ -609,8 +609,6 @@ body {
   transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
 }
 .account__submit:hover { background: var(--brass-bright); border-color: var(--brass-bright); }
-.account__submit--ghost { background: transparent; color: var(--brass-bright); }
-.account__submit--ghost:hover { background: rgba(217, 168, 92, 0.1); }
 .account__submit:disabled,
 .account__field input:disabled { opacity: 0.5; cursor: not-allowed; }
 .account__logout {
@@ -673,4 +671,54 @@ body {
 @media (max-width: 480px) {
   .account { justify-content: center; }
   .account__panel { left: 0; right: 0; margin: 0 auto; }
+}
+
+/* ---------------------------------------------------------------------------
+   Inlogverplichting (sep. 2026) — volledige-pagina inlogscherm, getoond
+   i.p.v. de site zolang niemand is ingelogd. Uitnodiging-only: geen
+   registratieformulier meer, alleen inloggen.
+   --------------------------------------------------------------------- */
+
+.login-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(61, 107, 111, 0.35), transparent),
+    var(--ink-deep);
+}
+.login-gate__card {
+  width: min(360px, 100%);
+  background: linear-gradient(165deg, rgba(238, 242, 239, 0.05), rgba(238, 242, 239, 0.02));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 2rem 1.75rem;
+  text-align: center;
+}
+.login-gate__mark { margin-bottom: 1rem; }
+.login-gate__mark img { display: block; margin: 0 auto; border-radius: 50%; }
+.login-gate__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.7rem;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+.login-gate__sub {
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+  color: rgba(238, 242, 239, 0.6);
+  line-height: 1.5;
+}
+.login-gate__card .account__form { text-align: left; }
+.login-gate__card .account__submit { width: 100%; flex: none; }
+.login-gate__note {
+  margin: 1.25rem 0 0;
+  font-size: 0.8rem;
+  color: rgba(238, 242, 239, 0.45);
+  line-height: 1.5;
 }

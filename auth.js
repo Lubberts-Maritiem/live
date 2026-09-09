@@ -1,13 +1,20 @@
-// wadoversteken.nl — account & favorieten (Supabase Auth + Postgres).
+// wadoversteken.nl — inlogverplichting, account & favorieten (Supabase Auth
+// + Postgres).
+//
+// De site is volledig achter een inlogscherm geplaatst: niemand ziet de
+// getij-/vertrekberekening zonder in te loggen. Registreren gaat niet meer
+// via de site zelf (uitnodiging-only) — nieuwe gebruikers worden door de
+// beheerder handmatig toegevoegd via het Supabase-dashboard (Authentication
+// > Users > Add user, met "Auto Confirm User" aangevinkt).
 //
 // Vereist, in deze volgorde vóór dit bestand geladen in index.html:
 //   1. supabase-config.js   (SUPABASE_URL, SUPABASE_ANON_KEY)
 //   2. de Supabase-JS-library (CDN, zie index.html)
 //
-// Zolang supabase-config.js nog de placeholder-waarden bevat, blijft de
-// account-knop zichtbaar maar inactief — de rest van de site (getij, wind,
-// vertrekvenster) blijft gewoon werken. Zie README.md, sectie
-// "Account & favorieten instellen".
+// Als supabase-config.js nog placeholder-waarden bevat (SUPABASE_READY is
+// dan false), blijft het inlogscherm permanent zichtbaar met een duidelijke
+// melding — de site "faalt dicht", niet open, want anders zou een kapotte
+// configuratie de inlogverplichting juist omzeilen.
 
 const SUPABASE_READY =
   typeof SUPABASE_URL === 'string' &&
@@ -23,7 +30,8 @@ const supabaseClient = SUPABASE_READY
 if (!SUPABASE_READY) {
   console.warn(
     'wadoversteken.nl: accountfunctie nog niet ingesteld — vul supabase-config.js in ' +
-    '(zie README.md, sectie "Account & favorieten instellen").'
+    '(zie README.md, sectie "Account & favorieten instellen"). Het inlogscherm blijft ' +
+    'daarom zichtbaar; zonder werkende configuratie kan niemand inloggen.'
   )
 }
 
@@ -45,38 +53,71 @@ const ICON_STAR_FILLED =
 
 let currentUser = null
 let currentFavorites = []
+// Voorkomt dat boot() (getij/wind ophalen) telkens opnieuw draait bij elke
+// onAuthStateChange-gebeurtenis (bijv. een stille token-refresh, die geen
+// echte in-/uitlog-wissel is).
+let appStarted = false
 
 // ---------------------------------------------------------------------------
 // DOM
 // ---------------------------------------------------------------------------
 
+const loginGate = document.getElementById('login-gate')
+const appContent = document.getElementById('app-content')
+const bootOverlay = document.getElementById('boot-overlay')
+
 const accountToggleBtn = document.getElementById('account-toggle')
 const accountPanel = document.getElementById('account-panel')
 const accountStatus = document.getElementById('account-status')
+const accountLogoutBtn = document.getElementById('account-logout')
+
 const accountForm = document.getElementById('account-form')
 const accountEmail = document.getElementById('account-email')
 const accountPassword = document.getElementById('account-password')
 const accountError = document.getElementById('account-error')
 const accountLoginBtn = document.getElementById('account-login')
-const accountSignupBtn = document.getElementById('account-signup')
-const accountLogoutBtn = document.getElementById('account-logout')
-const favoritesSection = document.getElementById('favorites-section')
+
 const favoritesList = document.getElementById('favorites-list')
 const favoritesEmpty = document.getElementById('favorites-empty')
 
 // ---------------------------------------------------------------------------
-// Account-paneel: openen/sluiten
+// Poort: inlogscherm tonen/verbergen, site tonen/verbergen
+// ---------------------------------------------------------------------------
+
+function hideBootOverlay() {
+  if (bootOverlay) bootOverlay.classList.add('hidden')
+}
+
+function showApp() {
+  if (loginGate) loginGate.hidden = true
+  if (appContent) appContent.hidden = false
+
+  if (!appStarted) {
+    appStarted = true
+    if (typeof window.startApp === 'function') window.startApp()
+    else hideBootOverlay()
+  }
+}
+
+function showGate() {
+  if (appContent) appContent.hidden = true
+  if (loginGate) loginGate.hidden = false
+  hideBootOverlay()
+}
+
+// ---------------------------------------------------------------------------
+// Account-paneel (rechtsboven, alleen zichtbaar/relevant als je al bent
+// ingelogd — toont wie je bent en een uitlogknop, geen formulier meer).
 // ---------------------------------------------------------------------------
 
 function openAccountPanel() {
-  accountPanel.hidden = false
-  accountToggleBtn.setAttribute('aria-expanded', 'true')
-  if (!currentUser) accountEmail.focus()
+  if (accountPanel) accountPanel.hidden = false
+  if (accountToggleBtn) accountToggleBtn.setAttribute('aria-expanded', 'true')
 }
 
 function closeAccountPanel() {
-  accountPanel.hidden = true
-  accountToggleBtn.setAttribute('aria-expanded', 'false')
+  if (accountPanel) accountPanel.hidden = true
+  if (accountToggleBtn) accountToggleBtn.setAttribute('aria-expanded', 'false')
 }
 
 if (accountToggleBtn) {
@@ -86,8 +127,9 @@ if (accountToggleBtn) {
   })
 
   document.addEventListener('click', (e) => {
-    if (accountPanel.hidden) return
-    if (document.getElementById('account').contains(e.target)) return
+    if (!accountPanel || accountPanel.hidden) return
+    const container = document.getElementById('account')
+    if (container && container.contains(e.target)) return
     closeAccountPanel()
   })
 }
@@ -103,48 +145,32 @@ function setAccountError(msg) {
 }
 
 function setBusy(busy) {
-  ;[accountLoginBtn, accountSignupBtn, accountEmail, accountPassword].forEach((el) => {
+  ;[accountLoginBtn, accountEmail, accountPassword].forEach((el) => {
     if (el) el.disabled = busy
   })
 }
 
 function renderAccountUI() {
-  if (!SUPABASE_READY) {
-    accountStatus.textContent = 'Accountfunctie nog niet ingesteld (zie supabase-config.js).'
-    accountForm.hidden = true
-    accountLogoutBtn.hidden = true
-    accountToggleBtn.textContent = 'Account'
-    if (favoritesSection) favoritesSection.hidden = true
-    return
-  }
-
+  if (!accountStatus) return
   if (currentUser) {
     accountStatus.textContent = `Ingelogd als ${currentUser.email}`
-    accountForm.hidden = true
-    accountLogoutBtn.hidden = false
-    accountToggleBtn.textContent = 'Account'
-    if (favoritesSection) favoritesSection.hidden = false
+    if (accountLogoutBtn) accountLogoutBtn.hidden = false
   } else {
     accountStatus.textContent = 'Niet ingelogd'
-    accountForm.hidden = false
-    accountLogoutBtn.hidden = true
-    accountToggleBtn.textContent = 'Inloggen'
-    if (favoritesSection) favoritesSection.hidden = true
+    if (accountLogoutBtn) accountLogoutBtn.hidden = true
   }
 }
 
 function vertaalAuthError(error) {
   const msg = (error && error.message) || ''
   if (msg.includes('Invalid login credentials')) return 'E-mail of wachtwoord onjuist.'
-  if (msg.includes('User already registered')) return 'Er bestaat al een account met dit e-mailadres.'
-  if (msg.includes('Password should be at least')) return 'Wachtwoord moet minimaal 6 tekens zijn.'
-  if (msg.includes('Email not confirmed')) return 'Bevestig eerst je e-mail via de link die je hebt ontvangen.'
+  if (msg.includes('Email not confirmed')) return 'Dit account is nog niet bevestigd. Vraag de beheerder dit na te kijken.'
   if (msg.includes('rate limit')) return 'Te veel pogingen. Probeer het over een minuut opnieuw.'
   return msg || 'Er ging iets mis. Probeer het opnieuw.'
 }
 
 // ---------------------------------------------------------------------------
-// Inloggen / registreren / uitloggen
+// Inloggen / uitloggen (registreren gaat niet meer via de site)
 // ---------------------------------------------------------------------------
 
 if (accountForm) {
@@ -161,29 +187,6 @@ if (accountForm) {
     setBusy(false)
 
     if (error) { setAccountError(vertaalAuthError(error)); return }
-    accountPassword.value = ''
-  })
-}
-
-if (accountSignupBtn) {
-  accountSignupBtn.addEventListener('click', async () => {
-    if (!supabaseClient) return
-    setAccountError('')
-    const email = accountEmail.value.trim()
-    const password = accountPassword.value
-
-    if (!email || !password) { setAccountError('Vul e-mail en wachtwoord in.'); return }
-    if (password.length < 6) { setAccountError('Wachtwoord moet minimaal 6 tekens zijn.'); return }
-
-    setBusy(true)
-    const { data, error } = await supabaseClient.auth.signUp({ email, password })
-    setBusy(false)
-
-    if (error) { setAccountError(vertaalAuthError(error)); return }
-
-    if (!data.session) {
-      accountStatus.textContent = 'Account aangemaakt. Bevestig je e-mail via de link die je hebt ontvangen, log daarna in.'
-    }
     accountPassword.value = ''
   })
 }
@@ -294,12 +297,11 @@ function refreshFavoriteButtons() {
 }
 
 async function toggleFavorite(route, departure, btn) {
-  if (!supabaseClient) return
-
-  if (!currentUser) {
-    openAccountPanel()
-    setAccountError('')
-    accountStatus.textContent = 'Log in of maak een account aan om favorieten op te slaan.'
+  if (!supabaseClient || !currentUser) {
+    // Zou niet moeten kunnen gebeuren: de site zelf is alleen zichtbaar als
+    // je bent ingelogd. Puur een vangnet, bijv. als een sessie net tussentijds
+    // is verlopen.
+    console.warn('Niet ingelogd, kan favoriet niet opslaan.')
     return
   }
 
@@ -338,24 +340,39 @@ async function toggleFavorite(route, departure, btn) {
 }
 
 // ---------------------------------------------------------------------------
-// Auth-status bijhouden
+// Auth-status bijhouden: bepaalt of het inlogscherm of de site te zien is
 // ---------------------------------------------------------------------------
 
-if (supabaseClient) {
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    currentUser = session ? session.user : null
-    renderAccountUI()
-    if (currentUser) {
-      loadFavorites()
-    } else {
-      currentFavorites = []
-      renderFavoritesList()
-    }
-    refreshFavoriteButtons()
-  })
+function handleSession(session) {
+  currentUser = session ? session.user : null
+  renderAccountUI()
+
+  if (currentUser) {
+    showApp()
+    loadFavorites()
+  } else {
+    appStarted = false
+    currentFavorites = []
+    renderFavoritesList()
+    showGate()
+  }
+  refreshFavoriteButtons()
 }
 
-renderAccountUI()
+if (SUPABASE_READY) {
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    handleSession(session)
+  })
+} else {
+  // Zonder werkende configuratie kan niemand ooit inloggen: toon het
+  // inlogscherm met een duidelijke melding en zet het formulier op slot,
+  // in plaats van de site per ongeluk open te laten staan.
+  setAccountError('Inloggen is nog niet ingesteld (zie supabase-config.js).')
+  if (accountLoginBtn) accountLoginBtn.disabled = true
+  if (accountEmail) accountEmail.disabled = true
+  if (accountPassword) accountPassword.disabled = true
+  showGate()
+}
 
 // ---------------------------------------------------------------------------
 // Publieke API voor app.js
@@ -365,4 +382,15 @@ window.Favorites = {
   buildButtonHtml: buildFavoriteButtonHtml,
   toggle: toggleFavorite,
   refreshButtons: refreshFavoriteButtons,
+}
+
+window.Auth = {
+  // Geeft het huidige (geldige, eventueel net ververste) toegangstoken
+  // terug, of null als er geen sessie is. Gebruikt door app.js om
+  // /api/getij te authenticeren.
+  getAccessToken: async function () {
+    if (!supabaseClient) return null
+    const { data } = await supabaseClient.auth.getSession()
+    return data && data.session ? data.session.access_token : null
+  },
 }

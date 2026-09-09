@@ -471,8 +471,14 @@ async function loadRoute(route, card, gekozenDatum) {
   `
 
   try {
+    // De site is nu alleen voor ingelogde gebruikers (zie auth.js). Het
+    // toegangstoken gaat mee als Authorization-header, zodat api/getij.js
+    // dit ook zelf kan controleren, los van het inlogscherm.
+    const accessToken = window.Auth ? await window.Auth.getAccessToken() : null
+    const getijHeaders = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+
     const [getijRes, windHourly, waveHourly] = await Promise.all([
-      fetch(`/api/getij?punt=${route.referentiepunt}&van=${fmt(van)}&tot=${fmt(tot)}`),
+      fetch(`/api/getij?punt=${route.referentiepunt}&van=${fmt(van)}&tot=${fmt(tot)}`, { headers: getijHeaders }),
       getWindForecast(route.referentiepunt),
       getWaveForecast(route.referentiepunt),
     ])
@@ -757,4 +763,9 @@ async function boot() {
   if (overlay) overlay.classList.add('hidden')
 }
 
-boot()
+// boot() wordt niet meer automatisch bij het laden van de pagina aangeroepen:
+// de site is nu alleen voor ingelogde gebruikers, dus getij/wind ophalen
+// heeft geen zin voordat iemand is ingelogd (en zou ook een 401 opleveren
+// bij api/getij.js). auth.js roept window.startApp() aan zodra bekend is
+// dat iemand is ingelogd (zie showApp() in auth.js).
+window.startApp = boot

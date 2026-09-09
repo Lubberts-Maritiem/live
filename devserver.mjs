@@ -23,7 +23,7 @@ const server = http.createServer(async (req, res) => {
   const query = Object.fromEntries(url.searchParams.entries())
 
   if (url.pathname === '/api/getij') {
-    const fakeReq = { query }
+    const fakeReq = { query, headers: req.headers }
     const fakeRes = {
       _status: 200,
       setHeader() {},

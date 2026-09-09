@@ -38,29 +38,37 @@
     <div class="boot-status" id="boot-status" aria-hidden="true">Getij ophalen…</div>
   </div>
 </div>
+<div class="login-gate" id="login-gate" hidden>
+  <div class="login-gate__card">
+    <div class="login-gate__mark" aria-hidden="true">
+      <img src="logo.png" width="56" height="56" alt="" />
+    </div>
+    <h1 class="login-gate__title">wadoversteken.nl</h1>
+    <p class="login-gate__sub">Vertrekvenster op basis van het getij. Alleen voor ingelogde gebruikers.</p>
+
+    <form class="account__form" id="account-form">
+      <label class="account__field">
+        <span>E-mail</span>
+        <input type="email" id="account-email" autocomplete="email" required />
+      </label>
+      <label class="account__field">
+        <span>Wachtwoord</span>
+        <input type="password" id="account-password" autocomplete="current-password" minlength="6" required />
+      </label>
+      <p class="account__error" id="account-error" hidden></p>
+      <button type="submit" class="account__submit" id="account-login">Inloggen</button>
+    </form>
+
+    <p class="login-gate__note">Nog geen account? Vraag de beheerder van wadoversteken.nl om er een voor je aan te maken.</p>
+  </div>
+</div>
+
 <a class="skip-link" href="#result">Ga direct naar het resultaat</a>
-<div class="page">
+<div class="page" id="app-content" hidden>
   <div class="account" id="account">
-    <button class="account__toggle" id="account-toggle" type="button" aria-expanded="false" aria-controls="account-panel">Inloggen</button>
+    <button class="account__toggle" id="account-toggle" type="button" aria-expanded="false" aria-controls="account-panel">Account</button>
     <div class="account__panel" id="account-panel" hidden>
       <p class="account__status" id="account-status">Niet ingelogd</p>
-
-      <form class="account__form" id="account-form">
-        <label class="account__field">
-          <span>E-mail</span>
-          <input type="email" id="account-email" autocomplete="email" required />
-        </label>
-        <label class="account__field">
-          <span>Wachtwoord</span>
-          <input type="password" id="account-password" autocomplete="current-password" minlength="6" required />
-        </label>
-        <p class="account__error" id="account-error" hidden></p>
-        <div class="account__actions">
-          <button type="submit" class="account__submit" id="account-login">Inloggen</button>
-          <button type="button" class="account__submit account__submit--ghost" id="account-signup">Account aanmaken</button>
-        </div>
-      </form>
-
       <button type="button" class="account__logout" id="account-logout" hidden>Uitloggen</button>
     </div>
   </div>
@@ -106,7 +114,7 @@
 
   <main class="result" id="result" aria-live="polite"></main>
 
-  <section class="favorites" id="favorites-section" hidden aria-live="polite">
+  <section class="favorites" id="favorites-section" aria-live="polite">
     <h2>Mijn favorieten</h2>
     <ul class="favorites__list" id="favorites-list"></ul>
     <p class="favorites__empty" id="favorites-empty">Nog geen favorieten opgeslagen. Klik op de ster bij een vertrekmoment om het hier te bewaren.</p>

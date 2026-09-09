@@ -13,6 +13,13 @@ getijdata van Rijkswaterstaat.
   instelbare drempelwaarden (wind, nacht).
 - **`app.js`** — de applicatielogica: dropdowns vullen, getij ophalen,
   vertrekvensters berekenen, wind/weer tonen.
+- **`auth.js`** — account aanmaken/inloggen/uitloggen en favorieten
+  opslaan/verwijderen, via Supabase. Zie "Account & favorieten instellen"
+  hieronder.
+- **`supabase-config.js`** — de URL en publieke ("anon") sleutel van je
+  eigen Supabase-project. Moet je zelf invullen, zie hieronder.
+- **`supabase-schema.sql`** — eenmalig uit te voeren in de Supabase SQL
+  Editor om de `favorites`-tabel en de beveiligingsregels aan te maken.
 - **`logo.png`**, **`favicon.png`**, **`apple-touch-icon.png`** — het beeldmerk
   in drie formaten (header/boot-animatie, paginaicoon, iOS/social-preview).
   `favicon.svg` staat nog in de map maar wordt nergens meer naar verwezen.
@@ -52,6 +59,66 @@ Vercel straks live.
    statische bestanden.
 4. Na deployen krijg je een `.vercel.app`-adres dat meteen werkt.
 5. Koppel daarna het domein wadoversteken.nl via Vercel's domeininstellingen.
+
+## Inloggen & favorieten instellen
+
+De site is volledig achter een inlogscherm geplaatst: niemand ziet de
+getij-/vertrekberekening zonder in te loggen. Registreren gaat expres niet
+via de site zelf (uitnodiging-only) — jij voegt zelf gebruikers toe via het
+Supabase-dashboard. Ingelogde gebruikers kunnen ook vertrekmomenten
+opslaan als favoriet, in een "Mijn favorieten"-blok.
+
+Dit draait op **Supabase** (gratis tier ruim voldoende voor dit doel):
+inloggen zit er kant-en-klaar in, en de favorieten staan in een eigen
+tabel die alleen de eigenaar zelf kan zien of wijzigen. `api/getij.js`
+controleert bij elke aanvraag ook zelf of iemand is ingelogd, dus ook wie
+buiten de site om rechtstreeks de getijdata probeert op te vragen komt
+niet verder zonder geldig account.
+
+Zolang `supabase-config.js` nog de standaardwaarden bevat, blijft het
+inlogscherm zichtbaar met een melding dat inloggen nog niet is ingesteld
+— de site "faalt dicht": zonder werkende configuratie kan niemand ooit
+inloggen, in plaats van dat de site per ongeluk open blijft staan voor
+iedereen.
+
+**Eenmalig instellen (ca. 5 minuten):**
+
+1. Maak een gratis account aan op supabase.com en klik op "New project".
+   Kies een naam en wachtwoord (het databasewachtwoord, niet iets waar
+   gebruikers van de site mee te maken krijgen) en wacht tot het project
+   klaarstaat (1-2 minuten).
+2. Ga naar **SQL Editor** in het Supabase-dashboard, klik op "New query",
+   plak de inhoud van `supabase-schema.sql` erin, en klik op "Run". Dit
+   maakt de `favorites`-tabel aan met de juiste beveiliging (elke
+   gebruiker ziet alleen zijn eigen favorieten).
+3. Ga naar **Project Settings > API**. Kopieer de **Project URL** en de
+   publieke ("anon"/publishable) sleutel (niet de "service_role"-sleutel,
+   die moet geheim blijven).
+4. Vul beide waarden in in `supabase-config.js` én bovenaan in
+   `api/getij.js` (moeten aan elkaar gelijk blijven — zie de commentaarregel
+   daar), op je eigen computer of rechtstreeks in GitHub.
+5. Commit en push (of upload de bestanden opnieuw in GitHub) — Vercel
+   deployt automatisch opnieuw.
+
+**Gebruikers toevoegen (uitnodiging-only, geen registratieknop op de site):**
+
+Ga naar **Authentication > Users** in het Supabase-dashboard, klik op
+"Add user", dan "Create new user". Vul e-mailadres en wachtwoord in, vink
+**"Auto Confirm User"** aan, en klik op aanmaken. Die persoon kan meteen
+inloggen op wadoversteken.nl met dat wachtwoord — geef het dus zelf even
+door. Een "wachtwoord vergeten"-flow is nog niet gebouwd; wil je iemands
+wachtwoord wijzigen, dan doe je dat ook via deze plek in het dashboard.
+
+Dit is bewust de eerste, kleinste stap. Profielgegevens en een eigen
+wachtwoord-vergeten-pagina zijn nog niet gebouwd — zie
+PROJECT-OVERZICHT.md, sectie 16, voor de status en mogelijke
+vervolgstappen (waaronder de eerder onderzochte e-mailherinnering, die nu
+eenvoudiger wordt omdat er al een gebruikersdatabase is).
+
+**Terug naar de open (niet-ingelogde) versie:** in de map
+`backup-2026-09-09-voor-inlogverplichting` staat een volledige kopie van
+de site van vlak vóór deze wijziging, inclusief `LEES-MIJ.txt` met
+terugzet-instructies.
 
 ## Routes aanpassen
 
