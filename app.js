@@ -584,8 +584,12 @@ async function loadRoute(route, card, gekozenDatum) {
 function buildActionsHtml(route, d) {
   const vertrekAttr = `data-vertrek="${d.vertrek.toISOString()}"`
   const eindAttr = d.isWindow ? ` data-vertrek-eind="${d.vertrekEind.toISOString()}"` : ''
+  // Favoriet-ster: buildButtonHtml komt uit auth.js (window.Favorites),
+  // dat vóór dit bestand wordt geladen (zie index.html).
+  const favHtml = window.Favorites ? window.Favorites.buildButtonHtml(route, d) : ''
   return `
     <div class="result__actions">
+      ${favHtml}
       <button class="result__action" type="button" data-action="share" data-route-id="${route.id}" ${vertrekAttr}${eindAttr} aria-label="Deel dit vertrekmoment" title="Delen">${ICON_SHARE}</button>
       <button class="result__action" type="button" data-action="ics" data-route-id="${route.id}" ${vertrekAttr}${eindAttr} aria-label="Toevoegen aan agenda" title="Toevoegen aan agenda">${ICON_CALENDAR}</button>
     </div>
@@ -695,10 +699,12 @@ resultEl.addEventListener('click', (e) => {
     vertrek: new Date(btn.dataset.vertrek),
     vertrekEind: btn.dataset.vertrekEind ? new Date(btn.dataset.vertrekEind) : null,
     isWindow: Boolean(btn.dataset.vertrekEind),
+    eventType: btn.dataset.eventType || null,
   }
 
   if (btn.dataset.action === 'share') handleShare(route, departure, btn)
   else if (btn.dataset.action === 'ics') handleIcs(route, departure, btn)
+  else if (btn.dataset.action === 'favorite' && window.Favorites) window.Favorites.toggle(route, departure, btn)
 })
 
 // ---------------------------------------------------------------------------
