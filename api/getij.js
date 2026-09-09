@@ -38,8 +38,40 @@ function toRwsDateString(date, offsetHours) {
   )
 }
 
+// wadoversteken.nl is alleen voor ingelogde gebruikers (zie auth.js in de
+// hoofdmap). Deze twee waarden moeten gelijk blijven aan supabase-config.js
+// — het zijn publieke, client-veilige waarden, geen geheimen (de "anon"/
+// publishable-sleutel is bedoeld om zichtbaar te zijn, ook hier).
+const SUPABASE_URL = 'https://njqpyzduyoswlfxxoksk.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_TogotR2vHS9p0Q8MPnmWRw_0nkxDomF'
+
+// Controleert het meegestuurde Supabase-token bij Supabase zelf. Dit zorgt
+// ervoor dat iemand niet buiten de site om, rechtstreeks naar deze
+// serverless function, toch getijdata kan opvragen zonder in te loggen —
+// de inlogverplichting in auth.js/index.html is anders alleen cosmetisch.
+async function verifySupabaseUser(token) {
+  if (!token) return null
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
+
+  const authHeader = req.headers && req.headers.authorization
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const user = await verifySupabaseUser(token)
+  if (!user) {
+    res.status(401).json({ error: 'Niet ingelogd. Log in op wadoversteken.nl om getijdata op te halen.' })
+    return
+  }
 
   const { punt, van, tot } = req.query
 
