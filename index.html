@@ -148,6 +148,63 @@
     </p>
   </section>
 
+  <section class="wantij-check" id="wantij-check-section" aria-live="polite">
+    <h2>Wantij-check — bereken je venster</h2>
+    <p>
+      Kies een wantij, vul je diepgang en gewenste marge in, en bereken het venster rond hoogwater
+      waarin de verwachte diepte voldoende is. Gebaseerd op de Wadvaarders-dieptestaat en de
+      1/12e-regel, geen live peiling — zie de toelichting onder het resultaat.
+    </p>
+
+    <div class="wantij-check__form">
+      <div class="wantij-check__field">
+        <label for="wantij-select">Wantij</label>
+        <select class="wantij-check__select" id="wantij-select" aria-label="Kies een wantij"></select>
+      </div>
+
+      <p class="wantij-check__toelichting" id="wantij-toelichting"></p>
+
+      <div class="wantij-check__row">
+        <div class="wantij-check__field wantij-check__field--klein">
+          <label for="wantij-diepgang">Diepgang (m)</label>
+          <input type="text" inputmode="decimal" id="wantij-diepgang" placeholder="bijv. 1,2" aria-label="Diepgang in meters" />
+        </div>
+        <div class="wantij-check__field wantij-check__field--klein">
+          <label for="wantij-marge">Marge (m)</label>
+          <input type="text" inputmode="decimal" id="wantij-marge" placeholder="0,3" value="0,3" aria-label="Gewenste marge in meters" />
+        </div>
+      </div>
+
+      <p class="wantij-check__toelichting">
+        Optioneel: vul je snelheid en de afstand tot dit wantij in om ook een vertrektijd te zien
+        (rechte lijn, geen route-berekening).
+      </p>
+
+      <div class="wantij-check__row">
+        <div class="wantij-check__field wantij-check__field--klein">
+          <label for="wantij-snelheid">Snelheid (kn)</label>
+          <input type="text" inputmode="decimal" id="wantij-snelheid" placeholder="bijv. 8" aria-label="Vaarsnelheid in knopen" />
+        </div>
+        <div class="wantij-check__field wantij-check__field--klein">
+          <label for="wantij-afstand">Afstand tot wantij (km)</label>
+          <input type="text" inputmode="decimal" id="wantij-afstand" placeholder="bijv. 13" aria-label="Afstand tot het wantij in kilometers" />
+        </div>
+      </div>
+
+      <div class="datepicker">
+        <label class="datepicker__toggle">
+          <input type="checkbox" id="wantij-date-toggle" />
+          <span>Specifieke datum kiezen</span>
+        </label>
+        <input type="date" class="datepicker__input" id="wantij-date-input" disabled aria-label="Gekozen datum" />
+      </div>
+
+      <button class="wantij-check__submit" id="wantij-bereken" type="button">Bereken venster</button>
+    </div>
+
+    <div class="wantij-check__resultaat" id="wantij-resultaat" aria-live="polite"></div>
+  </section>
+
   <footer class="footer">
     <p>
       Getijgegevens: Rijkswaterstaat (astronomisch getij, Waterinfo/WaterWebservices). Vertrekadviezen:
@@ -159,9 +216,11 @@
 </div>
 
 <script src="routes-data.js"></script>
+<script src="wantijen-data.js"></script>
 <script src="supabase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="auth.js"></script>
 <script src="app.js"></script>
+<script src="wantij.js"></script>
 </body>
 </html>

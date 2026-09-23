@@ -729,3 +729,124 @@ body {
   color: rgba(238, 242, 239, 0.45);
   line-height: 1.5;
 }
+
+
+/* Wantij-check — rekentool voor het oversteekvenster van één wantij (aanvullend
+   op de vaste vertrekadviezen hierboven: eigen diepgang/marge i.p.v. vuistregel). */
+.wantij-check {
+  margin-top: 2rem;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(165deg, rgba(238, 242, 239, 0.04), rgba(238, 242, 239, 0.015));
+}
+.wantij-check h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 500;
+  margin: 0 0 0.6rem;
+  color: rgba(238, 242, 239, 0.92);
+}
+.wantij-check > p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: rgba(238, 242, 239, 0.6);
+  margin: 0 0 1.25rem;
+}
+.wantij-check__form { display: flex; flex-direction: column; gap: 0.9rem; }
+.wantij-check__field { display: flex; flex-direction: column; gap: 0.3rem; }
+.wantij-check__field label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(238, 242, 239, 0.45);
+}
+.wantij-check__select,
+.wantij-check__field input {
+  background: var(--field-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 0.55rem 0.65rem;
+  color-scheme: dark;
+}
+.wantij-check__select:focus,
+.wantij-check__field input:focus { border-color: var(--brass); }
+.wantij-check__select option,
+.wantij-check__select optgroup { background: var(--ink); color: var(--paper); }
+.wantij-check__row { display: flex; gap: 0.9rem; }
+.wantij-check__field--klein { flex: 1; }
+.wantij-check__toelichting {
+  margin: -0.3rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(238, 242, 239, 0.55);
+}
+.wantij-check__toelichting strong { color: var(--brass-bright); }
+.wantij-check__submit {
+  align-self: flex-start;
+  border: 1px solid var(--brass);
+  background: var(--brass);
+  color: var(--ink-deep);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.wantij-check__submit:hover { background: var(--brass-bright); border-color: var(--brass-bright); }
+.wantij-check__submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wantij-check__resultaat { margin-top: 1.25rem; }
+.wantij-check__results { display: flex; flex-direction: column; gap: 0.9rem; }
+.wantij-check__result-item {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.9rem 1rem;
+  animation: card-in 0.3s var(--ease);
+}
+.wantij-check__result-item--geen { border-color: rgba(193, 84, 58, 0.4); }
+.wantij-check__result-hw {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(238, 242, 239, 0.5);
+}
+.wantij-check__result-venster {
+  margin: 0 0 0.4rem;
+  font-size: 1.15rem;
+  font-family: var(--font-mono);
+  color: var(--paper);
+}
+.wantij-check__result-vertrek {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  color: rgba(238, 242, 239, 0.75);
+}
+.wantij-check__result-vertrek strong {
+  font-family: var(--font-mono);
+  color: var(--brass-bright);
+}
+.wantij-check__result-ideaal {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--success);
+}
+.wantij-check__result-ideaal--let-op { color: var(--brass-bright); }
+.wantij-check__disclaimer {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(238, 242, 239, 0.45);
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--line);
+}
+@media (min-width: 480px) {
+  .wantij-check__form { max-width: 420px; }
+}
